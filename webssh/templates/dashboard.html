@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>WebSSH Cluster Manager</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+            background: #f0f2f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .node-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .node-info h3 {
+            margin: 0 0 10px 0;
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .actions a {
+            text-decoration: none;
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+        }
+
+        .status-dot {
+            height: 10px;
+            width: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .online {
+            background-color: #28a745;
+        }
+
+        .offline {
+            background-color: #dc3545;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Cluster Dashboard</h1>
+        <div id="node-list">
+            <!-- Nodes will be injected here via JS -->
+            <p>Loading nodes...</p>
+        </div>
+    </div>
+
+    <script>
+        const CLUSTER_SECRET = "{{ secret }}";
+
+        async function fetchNodes() {
+            try {
+                const response = await fetch('/api/nodes');
+                if (!response.ok) {
+                    if (response.status === 401) window.location.reload();
+                    throw new Error('Failed to fetch');
+                }
+                const nodes = await response.json();
+                renderNodes(nodes);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+        <!-- ... renderNodes same ... -->
+        function renderNodes(nodes) {
+            const container = document.getElementById('node-list');
+            container.innerHTML = '';
+
+            if (nodes.length === 0) {
+                container.innerHTML = '<p>No nodes registered yet.</p>';
+                return;
+            }
+
+            nodes.forEach(node => {
+                const now = Date.now() / 1000;
+                const isOnline = (now - node.last_seen) < 60; // 60s timeout
+
+                const div = document.createElement('div');
+                div.className = 'node-card';
+                div.innerHTML = `
+                    <div class="node-info">
+                        <h3><span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>${node.name}</h3>
+                        <div class="stats">
+                            <div class="stat-item"><span>CPU</span> <strong>${parseFloat(node.stats.cpu).toFixed(1)}%</strong></div>
+                            <div class="stat-item"><span>RAM</span> <strong>${(node.stats.ram_usage / 1024 / 1024).toFixed(0)} MB</strong></div>
+                            <div class="stat-item"><span>Disk</span> <strong>${parseFloat(node.stats.disk_usage).toFixed(0)}%</strong></div>
+                            <div class="stat-item"><span>Procs</span> <strong>${node.stats.processes}</strong></div>
+                        </div>
+                    </div>
+                    <div class="actions">
+                        <a href="#" onclick="connect('${node.url}')">Connect</a>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function connect(url) {
+            let targetUrl = url;
+            if (CLUSTER_SECRET) {
+                const separator = targetUrl.includes('?') ? '&' : '?';
+                targetUrl += separator + 'secret=' + encodeURIComponent(CLUSTER_SECRET);
+            }
+            window.open(targetUrl, '_blank');
+        }
+
+        setInterval(fetchNodes, 5000);
+        fetchNodes();
+    </script>
+</body>
+
+</html>

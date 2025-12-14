@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebSSH Console</title>
+  <link href="static/img/favicon-32.png" rel="icon" type="image/png">
+  <link href="static/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
+  <link href="static/css/xterm.min.css" rel="stylesheet" type="text/css" />
+  <link href="static/css/fullscreen.min.css" rel="stylesheet" type="text/css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <link rel="manifest" href="static/manifest.json">
+  <meta name="theme-color" content="#2c3e50">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="WebSSH">
+  <link rel="apple-touch-icon" href="static/img/favicon-32.png">
+  <style>
+    :root {
+      --primary-color: #2c3e50;
+      --secondary-color: #34495e;
+      --accent-color: #3498db;
+      --danger-color: #e74c3c;
+      --success-color: #2ecc71;
+      --warning-color: #f1c40f;
+      --light-bg: #ecf0f1;
+      --card-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .main-container {
+      max-width: 1000px;
+      width: 100%;
+      padding: 2rem;
+      /* 移动内边距到容器 */
+    }
+
+    .form-container {
+      background: white;
+      border-radius: 15px;
+      box-shadow: var(--card-shadow);
+      padding: 2.5rem;
+      margin-bottom: 2rem;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      height: auto;
+      /* 改为自动高度 */
+    }
+
+    .page-title {
+      color: var(--primary-color);
+      font-weight: 600;
+      font-size: 2rem;
+      margin-bottom: 2rem;
+      text-align: center;
+      position: relative;
+    }
+
+    .page-title:after {
+      content: '';
+      display: block;
+      width: 60px;
+      height: 4px;
+      background: var(--accent-color);
+      margin: 1rem auto;
+      border-radius: 2px;
+    }
+
+    .form-control {
+      border: 2px solid #eee;
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      /* 增加内边距 */
+      height: calc(3rem + 2px);
+      /* 设置固定高度 */
+      line-height: 1.5;
+      /* 设置行高 */
+      transition: all 0.3s ease;
+      background: #f8f9fa;
+    }
+
+    .form-control:focus {
+      border-color: var(--accent-color);
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+      background: white;
+    }
+
+    label {
+      font-weight: 500;
+      color: var(--secondary-color);
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .form-section {
+      margin-bottom: 1.5rem;
+    }
+
+    .btn {
+      border-radius: 8px;
+      padding: 0.8rem 1.5rem;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      font-size: 0.9rem;
+    }
+
+    .btn-primary {
+      background: var(--accent-color);
+      border: none;
+      box-shadow: 0 4px 15px rgba(52, 152, 219, 0.2);
+    }
+
+    .btn-primary:hover {
+      background: #2980b9;
+      transform: translateY(-2px);
+    }
+
+    .btn-danger {
+      background: var(--danger-color);
+      border: none;
+    }
+
+    .btn-info {
+      background: var(--success-color);
+      border: none;
+    }
+
+    #waiter {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.9);
+      color: white;
+      padding: 1.5rem 3rem;
+      border-radius: 50px;
+      font-size: 1.1rem;
+      backdrop-filter: blur(5px);
+      z-index: 1000;
+    }
+
+    #terminal {
+      margin-top: 1.5rem;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: var(--card-shadow);
+    }
+
+    #sshlink {
+      height: 70px;
+      /* 固定高度 */
+      flex: 1;
+      overflow-x: auto;
+      white-space: nowrap;
+      margin: 0;
+      padding: 0.5rem 1rem;
+      background: var(--light-bg);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      transition: opacity 0.3s ease;
+      display: flex;
+      align-items: center;
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .link-text {
+      padding: 0.5rem;
+      flex: 1;
+      overflow-x: scroll;
+      white-space: nowrap;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .link-text::-webkit-scrollbar {
+      display: none;
+    }
+
+    .github-corner {
+      position: fixed;
+      top: 0;
+      right: 0;
+      z-index: 100;
+      transition: opacity 0.3s ease;
+      /* 添加过渡效果 */
+    }
+
+    .github-corner.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .github-corner svg {
+      fill: var(--accent-color);
+      color: var(--light-bg);
+      position: absolute;
+      top: 0;
+      right: 0;
+      border: 0;
+      width: 80px;
+      height: 80px;
+    }
+
+    .github-corner:hover .octo-arm {
+      animation: octocat-wave 560ms ease-in-out;
+    }
+
+    .action-buttons {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 2rem;
+      margin-bottom: 2rem;
+      /* 添加底部间距 */
+    }
+
+    .button-group {
+      display: flex;
+      gap: 1rem;
+      flex-shrink: 0;
+      /* 防止按钮被压缩 */
+    }
+
+    /* 文件选择按钮的基本样式 */
+    .file-btn {
+      /* 移除右上角和右下角的圆角 */
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+      /* 设置内边距,使按钮更大更易点击 */
+      padding: 0.8rem 1.2rem;
+      /* 使用预定义的主题色作为背景色 */
+      background: var(--secondary-color);
+      /* 移除边框 */
+      border: none;
+      /* 添加过渡效果,使样式变化更平滑 */
+      transition: all 0.3s ease;
+      /* 设置相对定位,为光效动画做准备 */
+      position: relative;
+      /* 隐藏超出按钮范围的内容 */
+      overflow: hidden;
+    }
+
+    /* 鼠标悬停时的按钮样式 */
+    .file-btn:hover {
+      /* 添加渐变背景,使按钮更有层次感 */
+      background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+      /* 添加发光效果 */
+      box-shadow: 0 0 15px rgba(52, 152, 219, 0.5);
+      /* 轻微放大按钮,增加交互感 */
+      transform: scale(1.05);
+    }
+
+    /* 创建光效动画的元素 */
+    .file-btn:before {
+      /* 创建伪元素 */
+      content: '';
+      /* 绝对定位,相对于按钮定位 */
+      position: absolute;
+      top: 0;
+      /* 初始位置在按钮左侧外部 */
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      /* 创建透明渐变,形成光效 */
+      background: linear-gradient(120deg,
+          transparent,
+          rgba(255, 255, 255, 0.2),
+          transparent);
+      /* 添加过渡效果 */
+      transition: 0.5s;
+    }
+
+    /* 鼠标悬停时触发光效动画 */
+    .file-btn:hover:before {
+      /* 将光效移动到按钮右侧,形成扫光效果 */
+      left: 100%;
+    }
+
+    .file-input {
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+      background: #f8f9fa;
+    }
+
+    .input-group-btn {
+      margin: 0;
+      padding: 0;
+    }
+
+    .copy-btn {
+      color: var(--primary-color);
+      margin-left: auto;
+      cursor: pointer;
+    }
+
+    @media (max-width: 768px) {
+      .main-container {
+        padding: 1rem;
+        /* 移动端减小内边距 */
+      }
+
+      .form-container {
+        padding: 1.5rem;
+      }
+
+      .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+      }
+
+      .github-corner:hover .octo-arm {
+        animation: none;
+      }
+
+      .github-corner .octo-arm {
+        animation: octocat-wave 560ms ease-in-out;
+      }
+
+      .action-buttons {
+        flex-direction: column;
+      }
+
+      .button-group {
+        width: 100%;
+        flex-direction: column;
+      }
+
+      #sshlink {
+        width: 100%;
+      }
+    }
+
+    {% if font.family %}
+
+    @font-face {
+      font-family: '{{ font.family }}';
+      src: url('{{ font.url }}');
+    }
+
+    body {
+      font-family: '{{ font.family }}',
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      system-ui,
+      Roboto,
+      Oxygen,
+      Ubuntu,
+      Cantarell,
+      'Open Sans',
+      'Helvetica Neue',
+      sans-serif;
+      background: linear-gradient(135deg, #f6f8fa 0%, #e9ecef 100%);
+      min-height: 100vh;
+      padding: 0;
+      /* 移除原有内边距 */
+      color: var(--primary-color);
+      display: flex;
+      /* 添加flex布局 */
+      align-items: center;
+      /* 垂直居中 */
+      justify-content: center;
+      /* 水平居中 */
+      margin: 0;
+    }
+
+    {% end %}
+  </style>
+</head>
+
+<body>
+  <script>
+    function updateSSHlink() {
+      var thisPageProtocol = window.location.protocol;
+      var thisPageUrl = window.location.host;
+
+      var hostnamestr = document.getElementById("hostname").value;
+      var portstr = document.getElementById("port").value;
+      if (portstr == "") {
+        portstr = "22"
+      }
+      var usrnamestr = document.getElementById("username").value;
+      if (usrnamestr == "") {
+        usrnamestr = "root"
+      }
+      var passwdstr = document.getElementById("password").value;
+      var passwdstrAfterBase64 = window.btoa(passwdstr);
+
+      var initcmdstr = document.getElementById("initcmd").value;
+      var initcmdstrAfterURI = encodeURIComponent(initcmdstr);
+
+      var sshlinkstr = thisPageProtocol + "//" + thisPageUrl + "/?hostname=" + hostnamestr + "&port=" + portstr + "&username=" + usrnamestr + "&password=" + passwdstrAfterBase64 + "&command=" + initcmdstrAfterURI;
+
+      // 获取元素
+      var sshlinkElement = document.querySelector("#sshlink .link-text");
+      var sshlink = document.getElementById("sshlink");
+
+      // 清空之前的内容
+      sshlinkElement.textContent = '';
+
+      // 显示容器
+      sshlink.classList.add('active');
+
+      // 实现打字机效果
+      let i = 0;
+      const typeWriter = () => {
+        if (i < sshlinkstr.length) {
+          sshlinkElement.textContent += sshlinkstr.charAt(i);
+          i++;
+          setTimeout(typeWriter, 6); // 每个字符之间的延迟
+        } else {
+          sshlinkElement.classList.remove('typing');
+        }
+      }
+
+      // 开始打字效果
+      setTimeout(typeWriter, 300); // 等待容器动画开始后再开始打字
+    }
+
+
+    function copySSHLink() {
+      const linkText = document.querySelector("#sshlink .link-text").textContent;
+      navigator.clipboard.writeText(linkText).then(() => {
+        const copyBtn = document.querySelector(".copy-btn");
+        copyBtn.classList.remove("fa-copy");
+        copyBtn.classList.add("fa-check");
+        setTimeout(() => {
+          copyBtn.classList.remove("fa-check");
+          copyBtn.classList.add("fa-copy");
+        }, 2000);
+      });
+    }
+
+    // 确保DOM加载完成后绑定事件
+    document.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('sshlinkBtn').addEventListener('click', updateSSHlink);
+    });
+
+    // 注册 Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/static/js/service-worker.js')
+          .then(registration => {
+            console.log('ServiceWorker 注册成功');
+          })
+          .catch(err => {
+            console.log('ServiceWorker 注册失败：', err);
+          });
+      });
+    }
+  </script>
+  <a href="https://github.com/cmliu/webssh" target="_blank" class="github-corner" aria-label="View source on Github">
+    <svg viewBox="0 0 250 250" aria-hidden="true">
+      <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path>
+      <path
+        d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2"
+        fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path>
+      <path
+        d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z"
+        fill="currentColor" class="octo-body"></path>
+    </svg>
+  </a>
+  <div id="waiter" style="display: none">正在建立连接...</div>
+
+  <div class="main-container">
+    <div class="form-container" style="display: none">
+      <h1 class="page-title">WebSSH Console</h1>
+
+      <form id="connect" action="" method="post" enctype="multipart/form-data" {% if debug %} novalidate{% end %}>
+        <div class="form-section">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="hostname">主机地址 (Hostname)</label>
+              <input class="form-control" type="text" id="hostname" name="hostname" value="" required
+                placeholder="请输入主机地址">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="port">端口 (Port)</label>
+              <input class="form-control" type="number" id="port" name="port" placeholder="22" value="" min=1 max=65535>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="username">用户名 (Username)</label>
+              <input class="form-control" type="text" id="username" name="username" value="" required
+                placeholder="请输入用户名">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="password">密码 (Password)</label>
+              <input class="form-control" type="password" id="password" name="password" value="" placeholder="请输入密码">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="privatekey">私钥 (Private Key)</label>
+              <div class="input-group">
+                <label class="input-group-btn">
+                  <span class="btn btn-primary file-btn">
+                    <i class="fas fa-folder-open"></i> 选择文件
+                    <input type="file" id="privatekey" name="privatekey" style="display: none;"
+                      onchange="document.getElementById('showFilename').value = this.files.length ? this.files[0].name : '未选择文件'">
+                  </span>
+                </label>
+                <input type="text" class="form-control file-input" id="showFilename" placeholder="未选择私钥文件" readonly>
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="passphrase">密钥口令 (Passphrase)</label>
+              <input class="form-control" type="password" id="passphrase" name="passphrase" value=""
+                placeholder="如果需要请输入密钥口令">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="totp">动态验证码 (TOTP)</label>
+              <input class="form-control" type="password" id="totp" name="totp" value="" placeholder="如果启用请输入动态验证码">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="initcmd">初始命令 (Init Command)</label>
+              <input class="form-control" type="text" id="initcmd" name="initcmd" value="" placeholder="登录后要执行的命令">
+            </div>
+          </div>
+        </div>
+
+        <input type="hidden" id="term" name="term" value="xterm-256color">
+        {% module xsrf_form_html() %}
+
+        <div class="action-buttons">
+          <div class="button-group">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-terminal"></i> 连接
+            </button>
+            <button type="reset" class="btn btn-danger">
+              <i class="fas fa-redo"></i> 重置
+            </button>
+            <button type="button" class="btn btn-info" id="sshlinkBtn">
+              <i class="fas fa-link"></i> 生成链接
+            </button>
+          </div>
+        </div>
+
+        <div id="sshlink">
+          <div class="link-text"></div>
+          <i class="fas fa-copy copy-btn" onclick="copySSHLink()"></i>
+        </div>
+      </form>
+    </div>
+
+    <div class="terminal-container">
+      <div id="status" style="color: var(--danger-color);"></div>
+      <div id="terminal"></div>
+    </div>
+  </div>
+
+  <script src="static/js/jquery.min.js"></script>
+  <script src="static/js/popper.min.js"></script>
+  <script src="static/js/bootstrap.min.js"></script>
+  <script src="static/js/xterm.min.js"></script>
+  <script src="static/js/xterm-addon-fit.min.js"></script>
+  <script src="static/js/main.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,26 @@
+{
+    "name": "WebSSH Console",
+    "short_name": "WebSSH",
+    "description": "Web-based SSH Client",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#2c3e50",
+    "icons": [
+        {
+            "src": "img/favicon-16.png",
+            "sizes": "16x16",
+            "type": "image/png"
+        },
+        {
+            "src": "img/favicon-32.png",
+            "sizes": "32x32",
+            "type": "image/png"
+        },
+        {
+            "src": "img/favicon-96.png",
+            "sizes": "96x96",
+            "type": "image/png"
+        }
+    ]
+}
