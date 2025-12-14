@@ -194,9 +194,11 @@ class MixinHandler(object):
 
     def initialize(self, loop=None):
         self.check_request()
-        self.check_cluster_auth()
         self.loop = loop
         self.origin_policy = self.settings.get('origin_policy')
+
+    def prepare(self):
+        self.check_cluster_auth()
 
     def check_cluster_auth(self):
         # If running in slave mode with a secret, require it.

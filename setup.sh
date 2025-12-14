@@ -37,10 +37,23 @@ elif [ "$MODE" = "slave" ]; then
     echo "Starting Slave on port $PORT..."
 fi
 
+read -p "Run with PM2 in background? (y/n) [n]: " USE_PM2
+USE_PM2=${USE_PM2:-n}
+
 echo "Generated Command:"
 echo "$CMD"
 
 read -p "Do you want to run this now? (y/n): " RUN_NOW
 if [ "$RUN_NOW" = "y" ]; then
-    $CMD
+    if [ "$USE_PM2" = "y" ]; then
+        # Extract arguments from CMD (remove 'python run.py ')
+        ARGS=${CMD#python run.py }
+        NAME="webssh-$MODE-$PORT"
+        echo "Starting with PM2 (name: $NAME)..."
+        npx pm2 start run.py --name "$NAME" --interpreter python3 -- $ARGS
+        npx pm2 save
+        echo "Started. Check status with 'npx pm2 status'."
+    else
+        $CMD
+    fi
 fi
