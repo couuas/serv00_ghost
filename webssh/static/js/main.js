@@ -329,7 +329,13 @@ jQuery(function ($) {
     var ws_url = window.location.href.split(/\?|#/, 1)[0].replace('http', 'ws'),
       join = (ws_url[ws_url.length - 1] === '/' ? '' : '/'),
       url = ws_url + join + 'ws?id=' + msg.id,
-      sock = new window.WebSocket(url),
+      secret_match = window.location.search.match(/[?&]secret=([^&]+)/);
+      
+    if (secret_match) {
+        url += '&secret=' + secret_match[1];
+    }
+
+    var sock = new window.WebSocket(url),
       encoding = 'utf-8',
       decoder = window.TextDecoder ? new window.TextDecoder(encoding) : encoding,
       terminal = document.getElementById('terminal'),
