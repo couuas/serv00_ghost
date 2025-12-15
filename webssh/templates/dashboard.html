@@ -224,7 +224,7 @@
         function initAuthUI() {
             const container = document.getElementById('auth-controls');
             if (IS_AUTHED) {
-                container.innerHTML = `<a href="/webssh" target="_blank" style="text-decoration: none; background: #28a745; color: white; padding: 8px 16px; border-radius: 4px;">WebSSH</a>`;
+                container.innerHTML = `<button onclick="connect('/webssh')" style="background: #28a745; color: white; padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer;">WebSSH</button>`;
             } else {
                 container.innerHTML = `<button onclick="openLogin()" style="background: #007bff; color: white; padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer;">Login</button>`;
             }
