@@ -347,8 +347,26 @@
             });
 
             // Sort logic
+            function extractNumber(name) {
+                // Extract number after 's' (e.g., s1, s2, s10)
+                const match = name.match(/s(\d+)/i);
+                if (match) return parseInt(match[1]);
+
+                // Fallback: look for any number
+                const anyNum = name.match(/(\d+)/);
+                return anyNum ? parseInt(anyNum[1]) : 0;
+            }
+
             let keys = Object.keys(grouped);
             keys.sort((a, b) => {
+                const numA = extractNumber(a);
+                const numB = extractNumber(b);
+
+                if (numA !== numB) {
+                    return currentSort === 'asc' ? numA - numB : numB - numA;
+                }
+
+                // Fallback to alphabetical if keys are equal (or no numbers found)
                 if (currentSort === 'asc') return a.localeCompare(b);
                 else return b.localeCompare(a);
             });
