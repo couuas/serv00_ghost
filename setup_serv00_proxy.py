@@ -111,25 +111,40 @@ def clean_existing_proxies():
         print("No existing proxy domains found.")
 
 def ensure_ports_allocated(target_count=3):
-    """Ensures that exactly 'target_count' ports are allocated."""
+    """Ensures that exactly 'target_count' TCP ports are allocated, removing UDP ports."""
     print("Checking allocated ports...")
-    # NOTE: User input showed 'devil port list' works, 'devil port list tcp' failed
     output = run_command("devil port list")
     
-    existing_ports = []
+    tcp_ports = []
+    udp_ports = []
+    
     for line in output.splitlines():
         # Parsing lines like: "25796    tcp"
         parts = line.split()
-        if parts and parts[0].isdigit():
-            existing_ports.append(int(parts[0]))
-            
-    current_count = len(existing_ports)
-    print(f"Found {current_count} existing ports: {existing_ports}")
+        if len(parts) >= 2 and parts[0].isdigit():
+            port = int(parts[0])
+            proto = parts[1].lower()
+            if proto == "tcp":
+                tcp_ports.append(port)
+            elif proto == "udp":
+                udp_ports.append(port)
+
+    # Delete UDP ports
+    for port in udp_ports:
+        print(f"Found UDP port {port}. Deleting...")
+        try:
+            # devil port del udp <port>
+            run_command(f"devil port del udp {port}")
+        except Exception as e:
+            print(f"Failed to delete UDP port {port}: {e}")
+
+    current_count = len(tcp_ports)
+    print(f"Found {current_count} TCP ports: {tcp_ports}")
     
     needed = target_count - current_count
     
     if needed > 0:
-        print(f"Need {needed} more ports. Allocating...")
+        print(f"Need {needed} more TCP ports. Allocating...")
         for _ in range(needed):
             try:
                 subprocess.run("devil port add tcp random", shell=True, check=True, stdout=subprocess.DEVNULL)
@@ -138,15 +153,15 @@ def ensure_ports_allocated(target_count=3):
         
         # Re-read ports
         output = run_command("devil port list")
-        existing_ports = []
+        tcp_ports = []
         for line in output.splitlines():
             parts = line.split()
-            if parts and parts[0].isdigit():
-                existing_ports.append(int(parts[0]))
+            if len(parts) >= 2 and parts[0].isdigit() and parts[1].lower() == "tcp":
+                 tcp_ports.append(int(parts[0]))
     else:
-        print("Sufficient ports already allocated.")
+        print("Sufficient TCP ports already allocated.")
             
-    return existing_ports[:target_count]
+    return tcp_ports[:target_count]
 
 def setup_reverse_proxy(domain, port):
     """Configures the reverse proxy using 'devil www add'."""
