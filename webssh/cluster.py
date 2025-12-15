@@ -34,7 +34,16 @@ class NodeManager:
         logging.info(f"Updated node {node_id}: {node_data.get('name')}")
 
     def get_nodes(self):
-        return list(self.nodes.values())
+        nodes_list = []
+        now = time.time()
+        for node in self.nodes.values():
+            # Create a copy to avoid mutating the original stored data permanently for display
+            n = node.copy()
+            # Calculate status based on server time
+            # 30 seconds threshold for "online" (heartbeat is 10s)
+            n['is_online'] = (now - n.get('last_seen', 0)) < 30
+            nodes_list.append(n)
+        return nodes_list
 
 node_manager = NodeManager()
 

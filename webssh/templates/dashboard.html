@@ -105,14 +105,16 @@
             }
 
             nodes.forEach(node => {
-                const now = Date.now() / 1000;
-                const isOnline = (now - node.last_seen) < 60; // 60s timeout
+                const isOnline = node.is_online;
 
                 const div = document.createElement('div');
                 div.className = 'node-card';
                 div.innerHTML = `
                     <div class="node-info">
-                        <h3><span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>${node.name}</h3>
+                        <h3>
+                            <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
+                            ${node.name} <span style="font-size: 0.8em; color: ${isOnline ? '#28a745' : '#dc3545'};">(${isOnline ? 'Online' : 'Offline'})</span>
+                        </h3>
                         <div class="stats">
                             <div class="stat-item"><span>CPU</span> <strong>${parseFloat(node.stats.cpu).toFixed(1)}%</strong></div>
                             <div class="stat-item"><span>RAM</span> <strong>${(node.stats.ram_usage / 1024 / 1024).toFixed(0)} MB</strong></div>

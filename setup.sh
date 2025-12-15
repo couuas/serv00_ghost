@@ -7,8 +7,16 @@ read -p "Select Mode (master/slave/standalone) [standalone]: " MODE
 MODE=${MODE:-standalone}
 
 read -p "Enter Secret Token (for cluster security): " SECRET
+echo "Available Ports from devil:"
+devil port list
 read -p "Enter Port [8888]: " PORT
 PORT=${PORT:-8888}
+
+# Try to find the domain mapped to this port
+DOMAIN_MAPPING=$(devil www list | grep ":$PORT" | awk '{print $1}')
+if [ ! -z "$DOMAIN_MAPPING" ]; then
+    echo "This port appears to be mapped to: http://$DOMAIN_MAPPING"
+fi
 
 CMD="python run.py --mode=$MODE --port=$PORT --secret=$SECRET"
 
