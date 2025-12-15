@@ -18,6 +18,7 @@ def make_handlers(loop, options):
     host_keys_settings = get_host_keys_settings(options)
     policy = get_policy_setting(options, host_keys_settings)
 
+    # Default handlers (Standalone/Slave)
     handlers = [
         (r'/', IndexHandler, dict(loop=loop, policy=policy,
                                   host_keys_settings=host_keys_settings)),
@@ -25,24 +26,21 @@ def make_handlers(loop, options):
     ]
     
     if options.mode == 'master':
-        # Override root? Or add separate dashboard URL?
-        # User wants unified entry. Let's make / point to dashboard if master.
-        # But / is IndexHandler (WebSSH login).
-        # Let's keep / as WebSSH logic (maybe Master can also be a standalone SSH client?),
-        # or separate.
-        # Requirement: "Master: ... provide unified Web interface entry"
-        # Let's map / to DashboardHandler for Master.
+        # Master Handlers
         handlers = [
             (r'/', DashboardHandler),
             (r'/api/nodes', NodeListHandler),
             (r'/api/heartbeat', MasterHandler)
         ]
-        # We might still want WebSSH capabilities on Master?
-        # If Master is just a controller, maybe not.
-        # "Master: Provide view and enter other slave webssh".
-        # So Master is a dashboard. The "Enter" click opens a URL to Slave.
-        # Slaves run WebSSH.
-        pass
+        
+        # If embedded slave is enabled, we also expose WebSSH
+        if options.with_slave:
+            logging.info("Enabling embedded WebSSH on /webssh")
+            handlers.append(
+                (r'/webssh', IndexHandler, dict(loop=loop, policy=policy,
+                                              host_keys_settings=host_keys_settings))
+            )
+            handlers.append((r'/ws', WsockHandler, dict(loop=loop)))
         
     return handlers
 
@@ -73,6 +71,13 @@ def main():
             logging.error('Slave mode requires --master-url')
             sys.exit(1)
         worker = SlaveWorker(options.master_url, options.secret)
+        worker.start()
+
+    if options.mode == 'master' and options.with_slave:
+        logging.info("Starting embedded SlaveWorker for Master")
+        # Self-register
+        master_url = 'http://127.0.0.1:{}'.format(options.port)
+        worker = SlaveWorker(master_url, options.secret, node_name='Master-Local')
         worker.start()
         
     app = make_app(make_handlers(loop, options), get_app_settings(options))

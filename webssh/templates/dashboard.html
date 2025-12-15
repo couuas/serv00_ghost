@@ -71,7 +71,11 @@
 
 <body>
     <div class="container">
-        <h1>Cluster Dashboard</h1>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1>Cluster Dashboard</h1>
+            <a href="/webssh" target="_blank"
+                style="text-decoration: none; background: #28a745; color: white; padding: 8px 16px; border-radius: 4px;">WebSSH</a>
+        </div>
         <div id="node-list">
             <!-- Nodes will be injected here via JS -->
             <p>Loading nodes...</p>
@@ -104,33 +108,62 @@
                 return;
             }
 
-            const seenNames = new Set();
-
+            const grouped = {};
             nodes.forEach(node => {
-                if (seenNames.has(node.name)) {
-                    return;
+                if (!grouped[node.name]) {
+                    grouped[node.name] = [];
                 }
-                seenNames.add(node.name);
+                grouped[node.name].push(node);
+            });
 
-                const isOnline = node.is_online;
+            Object.keys(grouped).forEach(name => {
+                const groupNodes = grouped[name];
+                // Determine group status (Online if ANY is online? Or all?)
+                // Usually if one is online, the host is reachable.
+                const isAnyOnline = groupNodes.some(n => n.is_online);
+
+                // Aggregate Stats (Average)
+                let avgCpu = 0, totalRam = 0, maxDisk = 0, totalProcs = 0;
+                let onlineCount = 0;
+
+                groupNodes.forEach(n => {
+                    if (n.is_online) {
+                        avgCpu += parseFloat(n.stats.cpu || 0);
+                        totalRam += parseFloat(n.stats.ram_usage || 0);
+                        maxDisk = Math.max(maxDisk, parseFloat(n.stats.disk_usage || 0));
+                        totalProcs += parseInt(n.stats.processes || 0);
+                        onlineCount++;
+                    }
+                });
+
+                if (onlineCount > 0) {
+                    avgCpu = avgCpu / onlineCount;
+                }
 
                 const div = document.createElement('div');
                 div.className = 'node-card';
                 div.innerHTML = `
                     <div class="node-info">
                         <h3>
-                            <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
-                            ${node.name} <span style="font-size: 0.8em; color: ${isOnline ? '#28a745' : '#dc3545'};">(${isOnline ? 'Online' : 'Offline'})</span>
+                            <span class="status-dot ${isAnyOnline ? 'online' : 'offline'}"></span>
+                            ${name} 
+                            <span style="font-size: 0.8em; color: ${isAnyOnline ? '#28a745' : '#dc3545'};">
+                                (${onlineCount}/${groupNodes.length} Online)
+                            </span>
                         </h3>
                         <div class="stats">
-                            <div class="stat-item"><span>CPU</span> <strong>${parseFloat(node.stats.cpu).toFixed(1)}%</strong></div>
-                            <div class="stat-item"><span>RAM</span> <strong>${(node.stats.ram_usage / 1024 / 1024).toFixed(0)} MB</strong></div>
-                            <div class="stat-item"><span>Disk</span> <strong>${parseFloat(node.stats.disk_usage).toFixed(0)}%</strong></div>
-                            <div class="stat-item"><span>Procs</span> <strong>${node.stats.processes}</strong></div>
+                            <div class="stat-item"><span>Avg CPU</span> <strong>${avgCpu.toFixed(1)}%</strong></div>
+                            <div class="stat-item"><span>Total RAM</span> <strong>${(totalRam / 1024 / 1024).toFixed(0)} MB</strong></div>
+                            <div class="stat-item"><span>Max Disk</span> <strong>${maxDisk.toFixed(0)}%</strong></div>
+                            <div class="stat-item"><span>Procs</span> <strong>${totalProcs}</strong></div>
                         </div>
                     </div>
-                    <div class="actions">
-                        <a href="#" onclick="connect('${node.url}')">Connect</a>
+                    <div class="actions" style="display:flex; flex-direction:column; gap:5px;">
+                        ${groupNodes.map(n => `
+                            <a href="#" onclick="connect('${n.url}')" style="font-size: 0.9em; padding: 5px 10px;">
+                                Connect (${n.is_online ? 'Online' : 'Offline'})
+                            </a>
+                        `).join('')}
                     </div>
                 `;
                 container.appendChild(div);

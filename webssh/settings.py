@@ -62,6 +62,7 @@ define('ssh_host', default='localhost', help='Target SSH hostname')
 define('ssh_port', type=int, default=22, help='Target SSH port')
 define('ssh_user', default='root', help='Target SSH username')
 define('ssh_password', default='', help='Target SSH password')
+define('with_slave', type=bool, default=False, help='Run embedded slave worker in master mode')
 
 
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

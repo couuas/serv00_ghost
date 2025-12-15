@@ -33,6 +33,14 @@ CMD="python run.py --mode=$MODE --port=$PORT --secret=$SECRET"
 if [ "$MODE" = "master" ]; then
     read -p "Enter Dashboard Password: " AUTH_PASS
     CMD="$CMD --auth_password=$AUTH_PASS"
+    
+    read -p "Enable local WebSSH interface (Embedded Slave)? (y/n) [y]: " ENABLE_SLAVE
+    ENABLE_SLAVE=${ENABLE_SLAVE:-y}
+    if [ "$ENABLE_SLAVE" = "y" ]; then
+        CMD="$CMD --with_slave=True"
+        echo "Enabled embedded WebSSH."
+    fi
+
     echo "Starting Master on port $PORT..."
 elif [ "$MODE" = "slave" ]; then
     read -p "Enter Master URL (e.g., http://master.com): " MASTER_URL
