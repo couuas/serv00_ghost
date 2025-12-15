@@ -114,6 +114,58 @@
             cursor: pointer;
             margin-top: 10px;
         }
+
+        /* Toolbar Styles */
+        .toolbar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+            gap: 15px;
+            padding: 0 5px;
+        }
+
+        .toolbar-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1rem;
+            color: #555;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+        .toolbar-btn:hover {
+            opacity: 1;
+        }
+
+        /* Grid Layout Styles */
+        #node-list.grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        #node-list.grid .node-card {
+            margin-bottom: 0;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        #node-list.grid .node-info {
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        #node-list.grid .actions {
+            width: 100%;
+        }
+
+        #node-list.grid .stats {
+            flex-wrap: wrap;
+        }
     </style>
 </head>
 
@@ -131,6 +183,16 @@
                 <!-- Injected via JS based on Auth -->
             </div>
         </div>
+
+        <div class="toolbar">
+            <button class="toolbar-btn" onclick="toggleSort()" title="Toggle Sort Order">
+                <span id="sort-icon">⬇️</span> Sort
+            </button>
+            <button class="toolbar-btn" onclick="toggleView()" title="Toggle View Mode">
+                <span id="view-icon">≣</span> View
+            </button>
+        </div>
+
         <div id="node-list">
             <p>Loading nodes...</p>
         </div>
@@ -154,6 +216,10 @@
         const IS_AUTHED = "{{ is_authed }}" == "True";
         // Ensure XSRF cookie is set and available for JS
         const REQUEST_XSRF_TOKEN = "{{ handler.xsrf_token }}";
+
+        // UI State
+        let currentSort = 'asc'; // 'asc' or 'desc'
+        let currentView = 'list'; // 'list' or 'grid'
 
         function initAuthUI() {
             const container = document.getElementById('auth-controls');
@@ -213,10 +279,27 @@
             return r ? r[1] : undefined;
         }
 
+        function toggleSort() {
+            currentSort = currentSort === 'asc' ? 'desc' : 'asc';
+            document.getElementById('sort-icon').textContent = currentSort === 'asc' ? '⬇️' : '⬆️';
+            fetchNodes();
+        }
+
+        function toggleView() {
+            currentView = currentView === 'list' ? 'grid' : 'list';
+            document.getElementById('view-icon').textContent = currentView === 'list' ? '≣' : '⊞';
+            const container = document.getElementById('node-list');
+            if (currentView === 'grid') container.classList.add('grid');
+            else container.classList.remove('grid');
+        }
+
         async function fetchNodes() {
             try {
                 const response = await fetch('/api/nodes');
-                if (!response.ok) throw new Error('Failed to fetch');
+                if (!response.ok) {
+                    if (response.status === 401 && IS_AUTHED) window.location.reload();
+                    throw new Error('Failed to fetch');
+                }
                 const nodes = await response.json();
                 renderNodes(nodes);
             } catch (e) {
@@ -227,6 +310,10 @@
         function renderNodes(nodes) {
             const container = document.getElementById('node-list');
             const masterStatusDiv = document.getElementById('master-status');
+
+            // Apply View State
+            if (currentView === 'grid') container.classList.add('grid');
+            else container.classList.remove('grid');
 
             // Extract Master-Local logic
             const masterNodeIndex = nodes.findIndex(n => n.name === 'Master-Local');
@@ -259,7 +346,14 @@
                 grouped[node.name].push(node);
             });
 
-            Object.keys(grouped).forEach(name => {
+            // Sort logic
+            let keys = Object.keys(grouped);
+            keys.sort((a, b) => {
+                if (currentSort === 'asc') return a.localeCompare(b);
+                else return b.localeCompare(a);
+            });
+
+            keys.forEach(name => {
                 const groupNodes = grouped[name];
                 const isAnyOnline = groupNodes.some(n => n.is_online);
 
