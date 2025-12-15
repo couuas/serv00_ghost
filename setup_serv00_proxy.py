@@ -160,9 +160,18 @@ def setup_reverse_proxy(domain, port):
         print(f"Failed to add proxy for {domain}. Stderr: {e.stderr.strip()}")
 
 def main():
+    global CF_API_TOKEN
     if not CF_API_TOKEN:
-        print("Error: CLOUDFLARE_API_TOKEN environment variable is not set.")
-        sys.exit(1)
+        print("Cloudflare API Token not found in environment (CF_API_TOKEN).")
+        try:
+            token_input = input("Please enter your Cloudflare API Token (or press Enter to cancel): ").strip()
+        except EOFError:
+            token_input = ""
+            
+        if not token_input:
+            print("Operation cancelled.")
+            sys.exit(0)
+        CF_API_TOKEN = token_input
 
     print("--- Starting Setup ---")
 
