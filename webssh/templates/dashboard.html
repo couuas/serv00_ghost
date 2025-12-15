@@ -152,6 +152,8 @@
     <script>
         const CLUSTER_SECRET = "{{ secret }}";
         const IS_AUTHED = "{{ is_authed }}" == "True";
+        // Ensure XSRF cookie is set and available for JS
+        const REQUEST_XSRF_TOKEN = "{{ handler.xsrf_token }}";
 
         function initAuthUI() {
             const container = document.getElementById('auth-controls');
@@ -179,9 +181,8 @@
 
             try {
                 // Get XSRF token
-                const xsrf = getCookie('_xsrf');
                 const headers = { 'Content-Type': 'application/json' };
-                if (xsrf) headers['X-XSRFToken'] = xsrf;
+                if (REQUEST_XSRF_TOKEN) headers['X-XSRFToken'] = REQUEST_XSRF_TOKEN;
 
                 const res = await fetch('/api/login', {
                     method: 'POST',
