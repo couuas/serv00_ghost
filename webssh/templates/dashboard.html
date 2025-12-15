@@ -71,8 +71,14 @@
 
 <body>
     <div class="container">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h1>Cluster Dashboard</h1>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <h1 style="margin: 0;">Cluster Dashboard</h1>
+                <div id="master-status"
+                    style="font-size: 0.9rem; color: #666; display: flex; gap: 15px; background: white; padding: 5px 15px; border-radius: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <!-- Master Status injected here -->
+                </div>
+            </div>
             <a href="/webssh" target="_blank"
                 style="text-decoration: none; background: #28a745; color: white; padding: 8px 16px; border-radius: 4px;">WebSSH</a>
         </div>
@@ -101,10 +107,33 @@
         <!-- ... renderNodes same ... -->
         function renderNodes(nodes) {
             const container = document.getElementById('node-list');
+            const masterStatusDiv = document.getElementById('master-status');
+
+            // 1. Extract Master-Local
+            const masterNodeIndex = nodes.findIndex(n => n.name === 'Master-Local');
+            if (masterNodeIndex > -1) {
+                const master = nodes[masterNodeIndex];
+                nodes.splice(masterNodeIndex, 1); // Remove from grid list
+
+                // Render Master Status
+                const isOnline = master.is_online;
+                masterStatusDiv.innerHTML = `
+                    <span style="display: flex; align-items: center;">
+                        <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
+                        Master (${isOnline ? 'Online' : 'Offline'})
+                    </span>
+                    <span>CPU: <strong>${parseFloat(master.stats.cpu || 0).toFixed(1)}%</strong></span>
+                    <span>RAM: <strong>${(master.stats.ram_usage / 1024 / 1024).toFixed(0)} MB</strong></span>
+                `;
+                masterStatusDiv.style.display = 'flex';
+            } else {
+                masterStatusDiv.style.display = 'none';
+            }
+
             container.innerHTML = '';
 
             if (nodes.length === 0) {
-                container.innerHTML = '<p>No nodes registered yet.</p>';
+                container.innerHTML = '<p>No slave nodes registered yet.</p>';
                 return;
             }
 
