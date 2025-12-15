@@ -43,7 +43,8 @@ if [ "$MODE" = "master" ]; then
 
     echo "Starting Master on port $PORT..."
 elif [ "$MODE" = "slave" ]; then
-    read -p "Enter Master URL (e.g., http://master.com): " MASTER_URL
+    read -p "Enter Master URL [http://cluster.serv00.us.kg]: " MASTER_URL
+    MASTER_URL=${MASTER_URL:-http://cluster.serv00.us.kg}
     
     if [ ! -z "$DOMAIN_MAPPING" ]; then
         EXT_URL="http://$DOMAIN_MAPPING"
