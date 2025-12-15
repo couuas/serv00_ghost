@@ -54,12 +54,18 @@ elif [ "$MODE" = "slave" ]; then
     fi
     
     echo "--- SSH Target Configuration (Optional) ---"
-    read -p "Target SSH Host [localhost]: " SSH_HOST
-    SSH_HOST=${SSH_HOST:-localhost}
+    
+    # Calculate defaults
+    SERVER_ID=$(hostname | grep -oE 's[0-9]+' | head -n 1)
+    DEFAULT_SSH_HOST="${SERVER_ID}.serv00.us.kg"
+    DEFAULT_SSH_USER=$(whoami)
+
+    read -p "Target SSH Host [$DEFAULT_SSH_HOST]: " SSH_HOST
+    SSH_HOST=${SSH_HOST:-$DEFAULT_SSH_HOST}
     read -p "Target SSH Port [22]: " SSH_PORT
     SSH_PORT=${SSH_PORT:-22}
-    read -p "Target SSH User [root]: " SSH_USER
-    SSH_USER=${SSH_USER:-root}
+    read -p "Target SSH User [$DEFAULT_SSH_USER]: " SSH_USER
+    SSH_USER=${SSH_USER:-$DEFAULT_SSH_USER}
     read -p "Target SSH Password: " SSH_PASS
     
     CMD="$CMD --master_url=$MASTER_URL --external_url=$EXT_URL --ssh_host=$SSH_HOST --ssh_port=$SSH_PORT --ssh_user=$SSH_USER"
