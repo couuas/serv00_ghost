@@ -170,11 +170,23 @@ class SlaveWorker:
              except Exception as e:
                  logging.error(f"Failed to generate SSH link: {e}")
 
+        # Extract season from ssh_host (e.g. s1.serv00.com -> s1)
+        season = 'Unknown'
+        if options.ssh_host:
+            import re
+            match = re.match(r'(s\d+)', options.ssh_host)
+            if match:
+                season = match.group(1)
+            else:
+                season = options.ssh_host.split('.')[0]
+
         data = {
             'node_id': self.node_id,
             'name': self.node_name,
             'url': ssh_link, # Use the smart link as the main URL
-            'stats': stats
+            'stats': stats,
+            'username': options.ssh_user,
+            'season': season
         }
         
         headers = {'Content-Type': 'application/json'}

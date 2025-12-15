@@ -25,10 +25,13 @@ class AccountManager:
         accounts = {}
         for node in nodes:
             # Try to get username from 'username' field (sent by slave)
-            # Fallback to 'name' if not present, but slave usually sends 'username'
+            # Fallback to 'name' if not present
             user = node.get('username') or node.get('name')
             if user:
-                accounts[user] = {"user": user, "season": "Auto"}
+                accounts[user] = {
+                    "user": user, 
+                    "season": node.get('season', 'Auto')
+                }
         return accounts
 
     def get_settings(self):
