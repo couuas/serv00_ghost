@@ -75,6 +75,7 @@ if [ "$RUN_NOW" = "y" ]; then
         NAME="webssh-$MODE-$PORT"
         echo "Starting with PM2 (name: $NAME)..."
         npx pm2 start run.py --name "$NAME" --interpreter python3 -- $ARGS
+        echo "$NAME" > .pm2_app_name
         npx pm2 save
         echo "Started. Check status with 'npx pm2 status'."
     else

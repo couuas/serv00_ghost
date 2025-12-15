@@ -63,8 +63,18 @@ jobs:
                   # Command to execute
                   # 1. cd to directory
                   # 2. git pull
-                  cmd = f"cd {path} && git pull"
-                  print(f"Executing: {cmd}")
+                  # 3. Read .pm2_app_name and restart if exists
+                  cmd = (
+                      f"cd {path} && git pull && "
+                      "if [ -f .pm2_app_name ]; then "
+                      "  APP_NAME=$(cat .pm2_app_name); "
+                      "  echo 'Restarting PM2 app: '$APP_NAME; "
+                      "  npx pm2 restart $APP_NAME; "
+                      "else "
+                      "  echo 'No .pm2_app_name found, skipping restart'; "
+                      "fi"
+                  )
+                  print(f"Executing deployment and restart sequence...")
                   
                   stdin, stdout, stderr = client.exec_command(cmd)
                   
