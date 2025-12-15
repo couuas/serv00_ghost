@@ -151,7 +151,7 @@
 
     <script>
         const CLUSTER_SECRET = "{{ secret }}";
-        const IS_AUTHED = {{ 'true' if is_authed else 'false' }};
+        const IS_AUTHED = "{{ is_authed }}" == "True";
 
         function initAuthUI() {
             const container = document.getElementById('auth-controls');
