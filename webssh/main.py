@@ -42,6 +42,7 @@ def make_handlers(loop, options):
                                               host_keys_settings=host_keys_settings))
             )
             handlers.append((r'/ws', WsockHandler, dict(loop=loop)))
+            handlers.append((r'/webssh/ws', WsockHandler, dict(loop=loop)))
         
     return handlers
 
