@@ -202,6 +202,11 @@ class BaseAuthHandler(tornado.web.RequestHandler):
         auth_password = options.auth_password
         if not auth_password:
             return True
+        
+        # Check Cookie 
+        cookie_auth = self.get_cookie('auth_token')
+        if cookie_auth == auth_password:
+            return True
             
         auth_header = self.request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Basic '):
@@ -211,7 +216,6 @@ class BaseAuthHandler(tornado.web.RequestHandler):
         try:
             auth_decoded = base64.b64decode(auth_header[6:]).decode('utf-8')
             username, password = auth_decoded.split(':', 1)
-            # Username can be anything, check password
             return password == auth_password
         except:
             return False
@@ -222,16 +226,29 @@ class BaseAuthHandler(tornado.web.RequestHandler):
         self.finish()
         return False
 
+class LoginHandler(tornado.web.RequestHandler):
+    def post(self):
+        try:
+            data = json.loads(self.request.body)
+            password = data.get('password')
+            if password == options.auth_password:
+                self.set_cookie('auth_token', password, expires_days=7)
+                self.write({"status": "ok"})
+            else:
+                self.set_status(403)
+                self.write({"error": "Invalid password"})
+        except Exception as e:
+            self.set_status(400)
+            self.write({"error": str(e)})
+
 class DashboardHandler(BaseAuthHandler):
     def get(self):
-        if not self.check_auth():
-            self.request_auth()
-            return
-        self.render('dashboard.html', secret=options.secret)
+        # Allow Guest Access (secret is empty if not authed)
+        is_authed = self.check_auth()
+        secret = options.secret if is_authed else ''
+        self.render('dashboard.html', secret=secret, is_authed=is_authed)
 
 class NodeListHandler(BaseAuthHandler):
     def get(self):
-        if not self.check_auth():
-            self.request_auth()
-            return
+        # Allow Guest Access to see list
         self.write(json.dumps(node_manager.get_nodes()))
