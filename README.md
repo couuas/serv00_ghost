@@ -1,5 +1,11 @@
 # WebSSH Cluster Manager
 
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/couuas/webssh/deploy.yml?label=Deploy)
+![Python](https://img.shields.io/badge/python-3.7+-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+
+**[🔴 Live Demo](https://cluster.serv00.us.kg)**
+
 An advanced WebSSH solution capable of managing multiple servers (Serv00 nodes) in a distributed Master/Slave architecture.
 
 ## ✨ Features
