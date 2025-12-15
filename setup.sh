@@ -26,7 +26,13 @@ if [ "$MODE" = "master" ]; then
     echo "Starting Master on port $PORT..."
 elif [ "$MODE" = "slave" ]; then
     read -p "Enter Master URL (e.g., http://master.com): " MASTER_URL
-    read -p "Enter External URL of this node (e.g., http://s1.serv00.com:$PORT): " EXT_URL
+    
+    if [ ! -z "$DOMAIN_MAPPING" ]; then
+        EXT_URL="http://$DOMAIN_MAPPING"
+        echo "Using External URL: $EXT_URL"
+    else
+        read -p "Enter External URL of this node (e.g., http://s1.serv00.com:$PORT): " EXT_URL
+    fi
     
     echo "--- SSH Target Configuration (Optional) ---"
     read -p "Target SSH Host [localhost]: " SSH_HOST
