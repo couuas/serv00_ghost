@@ -178,22 +178,38 @@
             err.style.display = 'none';
 
             try {
+                // Get XSRF token
+                const xsrf = getCookie('_xsrf');
+                const headers = { 'Content-Type': 'application/json' };
+                if (xsrf) headers['X-XSRFToken'] = xsrf;
+
                 const res = await fetch('/api/login', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: headers,
                     body: JSON.stringify({ password: pwd })
                 });
                 if (res.ok) {
                     window.location.reload();
                 } else {
-                    const data = await res.json();
-                    err.textContent = data.error || "Invalid Password";
+                    let errorMsg = "Invalid Password";
+                    try {
+                        const data = await res.json();
+                        if (data.error) errorMsg = data.error;
+                    } catch (e) {
+                        errorMsg = "Login Failed (" + res.status + " " + res.statusText + ")";
+                    }
+                    err.textContent = errorMsg;
                     err.style.display = 'block';
                 }
             } catch (e) {
                 err.textContent = "Error: " + e;
                 err.style.display = 'block';
             }
+        }
+
+        function getCookie(name) {
+            var r = document.cookie.match("\\b" + name + "=([^;]*)\\b");
+            return r ? r[1] : undefined;
         }
 
         async function fetchNodes() {
