@@ -141,6 +141,54 @@
             opacity: 1;
         }
 
+        /* Tab Styles */
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            opacity: 0.6;
+            margin-right: 5px;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab-btn:hover {
+            opacity: 1;
+            background: #f8f9fa;
+        }
+
+        .tab-btn.active {
+            opacity: 1;
+            border-bottom: 3px solid #007bff;
+            font-weight: bold;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Monitor Styles */
+        .monitor-table th,
+        .monitor-table td {
+            text-align: left;
+        }
+
+        .input-group input {
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
         /* Grid Layout Styles */
         #node-list.grid {
             display: grid;
@@ -179,22 +227,79 @@
                     <!-- Master Status injected here -->
                 </div>
             </div>
-            <div id="auth-controls">
-                <!-- Injected via JS based on Auth -->
+            <div id="auth-controls"></div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('cluster', event)">Cluster</button>
+            <button class="tab-btn" onclick="switchTab('monitor', event)">Monitor</button>
+            <button class="tab-btn" onclick="switchTab('settings', event)">Settings</button>
+        </div>
+
+        <!-- Cluster Tab -->
+        <div id="tab-cluster" class="tab-content active">
+            <div class="toolbar">
+                <button class="toolbar-btn" onclick="toggleView()" title="Example: List/Grid"><span
+                        id="view-icon">≣</span> View</button>
+                <button class="toolbar-btn" onclick="toggleSort()" title="Sort"><span id="sort-icon">⬇️</span>
+                    Sort</button>
+            </div>
+            <div id="node-list">
+                <p>Loading nodes...</p>
             </div>
         </div>
 
-        <div class="toolbar">
-            <button class="toolbar-btn" onclick="toggleSort()" title="Toggle Sort Order">
-                <span id="sort-icon">⬇️</span> Sort
-            </button>
-            <button class="toolbar-btn" onclick="toggleView()" title="Toggle View Mode">
-                <span id="view-icon">≣</span> View
-            </button>
+        <!-- Monitor Tab -->
+        <div id="tab-monitor" class="tab-content">
+            <div class="header">
+                <h1>Account Monitor</h1>
+                <div class="toolbar">
+                    <button class="toolbar-btn" onclick="checkAllAccounts()"
+                        style="background: #28a745; color: white;">⚡ Check All</button>
+                </div>
+            </div>
+
+            <p style="margin-bottom: 20px; color: #666;">Accounts are automatically populated from connected nodes.</p>
+
+            <table class="monitor-table" style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f2f2f2;">
+                        <th style="padding: 10px; border: 1px solid #ddd;">User</th>
+                        <th style="padding: 10px; border: 1px solid #ddd;">Source</th>
+                        <th style="padding: 10px; border: 1px solid #ddd;">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="account-list"></tbody>
+            </table>
         </div>
 
-        <div id="node-list">
-            <p>Loading nodes...</p>
+        <!-- Settings Tab -->
+        <div id="tab-settings" class="tab-content">
+            <div class="header">
+                <h1>Monitor Settings</h1>
+            </div>
+            <div style="background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <h3>Telegram Notifications</h3>
+                <div style="margin-bottom: 15px;">
+                    <label>Bot Token:</label><br>
+                    <input type="text" id="tgToken"
+                        style="width: 100%; max-width: 400px; padding: 8px; margin-top: 5px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label>Chat ID:</label><br>
+                    <input type="text" id="tgChatId"
+                        style="width: 100%; max-width: 400px; padding: 8px; margin-top: 5px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label>Check Interval (Minutes):</label><br>
+                    <input type="number" id="tgInterval" value="60"
+                        style="width: 100px; padding: 8px; margin-top: 5px;">
+                </div>
+                <button onclick="saveSettings()"
+                    style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">Save
+                    Settings</button>
+            </div>
         </div>
     </div>
 
@@ -214,12 +319,111 @@
     <script>
         const CLUSTER_SECRET = "{{ secret }}";
         const IS_AUTHED = "{{ is_authed }}" == "True";
+
         // Ensure XSRF cookie is set and available for JS
         const REQUEST_XSRF_TOKEN = "{{ handler.xsrf_token }}";
 
         // UI State
         let currentSort = 'asc'; // 'asc' or 'desc'
         let currentView = 'list'; // 'list' or 'grid'
+
+        // --- Monitor Logic ---
+        async function switchTab(tab, event) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+            document.getElementById('tab-' + tab).classList.add('active');
+            if (event) {
+                event.currentTarget.classList.add('active');
+            } else {
+                const index = ['cluster', 'monitor', 'settings'].indexOf(tab);
+                if (index >= 0) document.querySelectorAll('.tab-btn')[index].classList.add('active');
+            }
+
+            if (tab === 'monitor') {
+                loadAccounts();
+            } else if (tab === 'settings') {
+                loadSettings();
+            }
+        }
+
+        async function loadAccounts() {
+            try {
+                const res = await fetch('/api/monitor/accounts');
+                const accounts = await res.json();
+                renderAccounts(accounts);
+            } catch (e) { console.error("Error loading accounts", e); }
+        }
+
+        function renderAccounts(accounts, statusMap = {}) {
+            const tbody = document.getElementById('account-list');
+            tbody.innerHTML = '';
+            // Sort by username
+            const sortedUsers = Object.keys(accounts).sort();
+
+            sortedUsers.forEach(user => {
+                const acc = accounts[user];
+                const status = statusMap[user] || { status: 'Unknown' };
+                const row = `
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd;"><a href="https://${acc.user}.serv00.net" target="_blank">${acc.user}</a></td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">${acc.source}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">${status.status}</td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+
+        async function checkAllAccounts() {
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = "Checking...";
+            btn.disabled = true;
+            try {
+                const headers = { 'Content-Type': 'application/json' };
+                if (REQUEST_XSRF_TOKEN) headers['X-XSRFToken'] = REQUEST_XSRF_TOKEN;
+
+                const res = await fetch('/api/monitor/check', { method: 'POST', headers: headers });
+                const data = await res.json();
+
+                const accRes = await fetch('/api/monitor/accounts');
+                const accounts = await accRes.json();
+                renderAccounts(accounts, data.results);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function loadSettings() {
+            const res = await fetch('/api/monitor/telegram');
+            const data = await res.json();
+            document.getElementById('tgToken').value = data.telegramToken || '';
+            document.getElementById('tgChatId').value = data.telegramChatId || '';
+            document.getElementById('tgInterval').value = data.timeValue || '60';
+        }
+
+        async function saveSettings() {
+            const token = document.getElementById('tgToken').value;
+            const chatId = document.getElementById('tgChatId').value;
+            const interval = document.getElementById('tgInterval').value;
+
+            const headers = { 'Content-Type': 'application/json' };
+            if (REQUEST_XSRF_TOKEN) headers['X-XSRFToken'] = REQUEST_XSRF_TOKEN;
+
+            await fetch('/api/monitor/telegram', {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({
+                    telegramToken: token,
+                    telegramChatId: chatId,
+                    scheduleType: 'interval',
+                    timeValue: interval
+                })
+            });
+            alert('Settings Saved!');
+        }
 
         function initAuthUI() {
             const container = document.getElementById('auth-controls');
