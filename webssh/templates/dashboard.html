@@ -296,6 +296,8 @@
 
         let currentSort = 'asc'; // 'asc' or 'desc'
         let currentView = 'list'; // 'list' or 'grid'
+        let accountStatusMap = {}; // specific persistence
+        let lastNodes = []; // store for re-rendering
 
         // --- Tab Logic ---
         async function switchTab(tab, event) {
@@ -329,17 +331,16 @@
                 const data = await res.json();
                 const results = data.results || {};
 
-                // Update specific status elements in the DOM
+                // Update persistent map
                 for (const [user, statusInfo] of Object.entries(results)) {
-                    // Update all instances of this user status
-                    const el = document.getElementById(`status-${user}`);
-                    if (el) {
-                        el.textContent = statusInfo.status;
-                        if (statusInfo.status === 'Active') el.style.color = '#28a745';
-                        else if (statusInfo.status === 'Locked' || statusInfo.status.includes('Error')) el.style.color = '#dc3545';
-                        else el.style.color = '#666';
-                    }
+                    accountStatusMap[user] = statusInfo;
                 }
+
+                // Re-render immediately to show new status
+                if (lastNodes.length > 0) {
+                    renderNodes(lastNodes);
+                }
+
             } finally {
                 btn.textContent = originalText;
                 btn.disabled = false;
@@ -456,6 +457,7 @@
                     throw new Error('Failed to fetch');
                 }
                 const nodes = await response.json();
+                lastNodes = nodes; // Save for re-renders
                 renderNodes(nodes);
             } catch (e) {
                 console.error(e);
@@ -524,6 +526,12 @@
             keys.forEach(name => {
                 const groupNodes = grouped[name];
                 const isAnyOnline = groupNodes.some(n => n.is_online);
+                const username = groupNodes[0].username || 'N/A';
+
+                // Get persisted status
+                const statusInfo = accountStatusMap[username] || { status: 'Unknown' };
+                const statusColor = (statusInfo.status === 'Active') ? '#28a745' :
+                    (statusInfo.status.includes('Locked') || statusInfo.status.includes('Error')) ? '#dc3545' : '#666';
 
                 let avgCpu = 0, totalRam = 0, maxDisk = 0, totalProcs = 0, onlineCount = 0;
                 groupNodes.forEach(n => {
@@ -544,13 +552,14 @@
                         <h3>
                             <span class="status-dot ${isAnyOnline ? 'online' : 'offline'}"></span>
                             ${name} 
-                            <span style="font-size: 0.8em; color: ${isAnyOnline ? '#28a745' : '#dc3545'};">
+                            <span style="font-size: 0.8em; color: ${isAnyOnline ? '#28a745' : '#dc3545'}; margin-right: 10px;">
                                 (${onlineCount}/${groupNodes.length} Online)
+                            </span>
+                            <span style="font-size: 0.8em; color: #555; font-weight: normal; border-left: 1px solid #ccc; padding-left: 10px;">
+                                User: <strong>${username}</strong> | Status: <strong style="color: ${statusColor}">${statusInfo.status}</strong>
                             </span>
                         </h3>
                         <div class="stats">
-                             <div class="stat-item"><span>User</span> <strong>${groupNodes[0].username || 'N/A'}</strong></div>
-                             <div class="stat-item"><span>Account</span> <strong id="status-${groupNodes[0].username || 'unknown'}">Unknown</strong></div>
                             <div class="stat-item"><span>Avg CPU</span> <strong>${avgCpu.toFixed(1)}%</strong></div>
                             <div class="stat-item"><span>Total RAM</span> <strong>${(totalRam / 1024 / 1024).toFixed(0)} MB</strong></div>
                             <div class="stat-item"><span>Max Disk</span> <strong>${maxDisk.toFixed(0)}%</strong></div>
