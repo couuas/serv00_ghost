@@ -66,6 +66,54 @@
         .offline {
             background-color: #dc3545;
         }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 300px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .login-btn {
+            background: #007bff;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+        }
     </style>
 </head>
 
@@ -79,43 +127,95 @@
                     <!-- Master Status injected here -->
                 </div>
             </div>
-            <a href="/webssh" target="_blank"
-                style="text-decoration: none; background: #28a745; color: white; padding: 8px 16px; border-radius: 4px;">WebSSH</a>
+            <div id="auth-controls">
+                <!-- Injected via JS based on Auth -->
+            </div>
         </div>
         <div id="node-list">
-            <!-- Nodes will be injected here via JS -->
             <p>Loading nodes...</p>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeLogin()">&times;</span>
+            <h2>Login</h2>
+            <input type="password" id="passwordInput" placeholder="Enter Password"
+                style="width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box;"
+                onkeypress="handleEnter(event)">
+            <button class="login-btn" onclick="performLogin()">Submit</button>
+            <p id="loginError" style="color: red; display: none; margin-top: 10px;"></p>
         </div>
     </div>
 
     <script>
         const CLUSTER_SECRET = "{{ secret }}";
+        const IS_AUTHED = {{ 'true' if is_authed else 'false' }};
+
+        function initAuthUI() {
+            const container = document.getElementById('auth-controls');
+            if (IS_AUTHED) {
+                container.innerHTML = `<a href="/webssh" target="_blank" style="text-decoration: none; background: #28a745; color: white; padding: 8px 16px; border-radius: 4px;">WebSSH</a>`;
+            } else {
+                container.innerHTML = `<button onclick="openLogin()" style="background: #007bff; color: white; padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer;">Login</button>`;
+            }
+        }
+
+        function openLogin() {
+            document.getElementById('loginModal').style.display = 'block';
+            document.getElementById('passwordInput').focus();
+        }
+        function closeLogin() { document.getElementById('loginModal').style.display = 'none'; }
+
+        function handleEnter(e) {
+            if (e.key === 'Enter') performLogin();
+        }
+
+        async function performLogin() {
+            const pwd = document.getElementById('passwordInput').value;
+            const err = document.getElementById('loginError');
+            err.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: pwd })
+                });
+                if (res.ok) {
+                    window.location.reload();
+                } else {
+                    const data = await res.json();
+                    err.textContent = data.error || "Invalid Password";
+                    err.style.display = 'block';
+                }
+            } catch (e) {
+                err.textContent = "Error: " + e;
+                err.style.display = 'block';
+            }
+        }
 
         async function fetchNodes() {
             try {
                 const response = await fetch('/api/nodes');
-                if (!response.ok) {
-                    if (response.status === 401) window.location.reload();
-                    throw new Error('Failed to fetch');
-                }
+                if (!response.ok) throw new Error('Failed to fetch');
                 const nodes = await response.json();
                 renderNodes(nodes);
             } catch (e) {
                 console.error(e);
             }
         }
-        <!-- ... renderNodes same ... -->
+
         function renderNodes(nodes) {
             const container = document.getElementById('node-list');
             const masterStatusDiv = document.getElementById('master-status');
 
-            // 1. Extract Master-Local
+            // Extract Master-Local logic
             const masterNodeIndex = nodes.findIndex(n => n.name === 'Master-Local');
             if (masterNodeIndex > -1) {
                 const master = nodes[masterNodeIndex];
-                nodes.splice(masterNodeIndex, 1); // Remove from grid list
-
-                // Render Master Status
+                nodes.splice(masterNodeIndex, 1);
                 const isOnline = master.is_online;
                 masterStatusDiv.innerHTML = `
                     <span style="display: flex; align-items: center;">
@@ -131,7 +231,6 @@
             }
 
             container.innerHTML = '';
-
             if (nodes.length === 0) {
                 container.innerHTML = '<p>No slave nodes registered yet.</p>';
                 return;
@@ -139,22 +238,15 @@
 
             const grouped = {};
             nodes.forEach(node => {
-                if (!grouped[node.name]) {
-                    grouped[node.name] = [];
-                }
+                if (!grouped[node.name]) grouped[node.name] = [];
                 grouped[node.name].push(node);
             });
 
             Object.keys(grouped).forEach(name => {
                 const groupNodes = grouped[name];
-                // Determine group status (Online if ANY is online? Or all?)
-                // Usually if one is online, the host is reachable.
                 const isAnyOnline = groupNodes.some(n => n.is_online);
 
-                // Aggregate Stats (Average)
-                let avgCpu = 0, totalRam = 0, maxDisk = 0, totalProcs = 0;
-                let onlineCount = 0;
-
+                let avgCpu = 0, totalRam = 0, maxDisk = 0, totalProcs = 0, onlineCount = 0;
                 groupNodes.forEach(n => {
                     if (n.is_online) {
                         avgCpu += parseFloat(n.stats.cpu || 0);
@@ -164,10 +256,7 @@
                         onlineCount++;
                     }
                 });
-
-                if (onlineCount > 0) {
-                    avgCpu = avgCpu / onlineCount;
-                }
+                if (onlineCount > 0) avgCpu = avgCpu / onlineCount;
 
                 const div = document.createElement('div');
                 div.className = 'node-card';
@@ -188,11 +277,11 @@
                         </div>
                     </div>
                     <div class="actions" style="display:flex; flex-direction:column; gap:5px;">
-                        ${groupNodes.map(n => `
+                        ${IS_AUTHED ? groupNodes.map(n => `
                             <a href="#" onclick="connect('${n.url}')" style="font-size: 0.9em; padding: 5px 10px;">
                                 Connect (${n.is_online ? 'Online' : 'Offline'})
                             </a>
-                        `).join('')}
+                        `).join('') : '<span style="color:#999; font-size:0.9em;">Guest Mode (Login to Connect)</span>'}
                     </div>
                 `;
                 container.appendChild(div);
@@ -202,12 +291,12 @@
         function connect(url) {
             let targetUrl = url;
             if (CLUSTER_SECRET) {
-                const separator = targetUrl.includes('?') ? '&' : '?';
-                targetUrl += separator + 'secret=' + encodeURIComponent(CLUSTER_SECRET);
+                targetUrl += (targetUrl.includes('?') ? '&' : '?') + 'secret=' + encodeURIComponent(CLUSTER_SECRET);
             }
             window.open(targetUrl, '_blank');
         }
 
+        initAuthUI();
         setInterval(fetchNodes, 5000);
         fetchNodes();
     </script>
