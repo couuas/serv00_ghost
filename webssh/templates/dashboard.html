@@ -104,7 +104,14 @@
                 return;
             }
 
+            const seenNames = new Set();
+
             nodes.forEach(node => {
+                if (seenNames.has(node.name)) {
+                    return;
+                }
+                seenNames.add(node.name);
+
                 const isOnline = node.is_online;
 
                 const div = document.createElement('div');
