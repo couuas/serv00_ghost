@@ -66,6 +66,12 @@ def app_listen(app, port, address, server_settings):
 def main():
     options.parse_command_line()
     check_encoding_setting(options.encoding)
+    
+    if options.auth_password:
+        logging.info("Dashboard Authentication Enabled")
+    else:
+        logging.warning("Dashboard Authentication DISABLED (Password is empty) - Running in Open Mode")
+
     loop = tornado.ioloop.IOLoop.current()
     if options.mode == 'slave':
         if not options.master_url:
