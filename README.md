@@ -123,5 +123,59 @@ JSON object for Telegram Bot configuration (used by Health Check):
 }
 ```
 
+## 🗺️ Development Roadmap
+
+This roadmap outlines the next phase of evolution for the WebSSH Cluster, transforming it from a "Server Manager" into a lightweight **"PaaS (Platform as a Service)"** for Python applications.
+
+###  Phase 1: Application Manager (PM2 GUI)
+*Goal: Visualize and manage running applications on all nodes.*
+
+- [ ] **Process List**: Extend the Dashboard to show not just system stats, but a list of running PM2 processes on each node.
+- [ ] **Process Control**: Add buttons to `Start`, `Stop`, `Restart`, and `Delete` processes directly from the UI.
+- [ ] **Logs Viewer**: Ability to stream or fetch `pm2 logs` for a specific process via WebSocket.
+
+###  Phase 2: GitHub One-Click Deploy
+*Goal: Deploy a repo from GitHub to a specific node with zero terminal interaction.*
+
+- [ ] **Deployment Wizard**:
+    - Input: GitHub Repo URL.
+    - Input: Branch (default: main).
+    - Input: Project Name (App name).
+    - Input: Run Command (e.g., `python app.py`).
+- [ ] **Backend Automation** (via SSH):
+    1.  **Clone**: `git clone <repo>` to `~/domains/<project>`.
+    2.  **Install**: Auto-detect `requirements.txt` (pip) or `package.json` (npm) and install dependencies.
+    3.  **Run**: Register with PM2: `pm2 start <cmd> --name <project>`.
+- [ ] **Auto-Update**: "Pull & Restart" button to update code from the latest commit.
+
+###  Phase 3: Smart Port Assignment
+*Goal: Automatically assign available ports to new applications.*
+
+> **Context**: Ports and Domains are pre-configured/reserved (e.g., via `setup_proxy`). The goal is to find an *unused* one for the new deployment.
+
+- [ ] **Port Discovery**:
+    - Fetch reserved ports via `devil port list`.
+- [ ] **Idle Detection**:
+    - logic: Check which of remaining reserved ports is **NOT** currently listening (using `sockstat` or `lsof` logic).
+    - Find the first "Idle" port.
+- [ ] **Assignment**:
+    - Pass this idle port as an environment variable (e.g., `PORT=12345`) to the new PM2 process.
+
+###  Phase 4: CI/CD Integration
+*Goal: Automate deployments via GitHub Actions.*
+
+- [ ] **Webhook Endpoint**: Create a Master API endpoint to receive GitHub Webhooks.
+
+
+## 🌐 Acknowledgements
+
+Special thanks to the following open-source projects that make this possible:
+
+- **[Tornado](https://www.tornadoweb.org/)**: A scalable, non-blocking web server and web framework.
+- **[Paramiko](https://www.paramiko.org/)**: A native Python SSHv2 protocol implementation.
+- **[psutil](https://github.com/giampaolo/psutil)**: Cross-platform process and system monitoring.
+- **[huashengdun/webssh](https://github.com/huashengdun/webssh)**: The original WebSSH project foundation.
+
 ## 📄 License
-MIT License
+
+This project is open-sourced software licensed under the [MIT license](LICENSE).
