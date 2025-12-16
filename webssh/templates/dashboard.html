@@ -476,6 +476,29 @@
             }
         }
 
+        async function controlApp(nodeId, action, pmId) {
+            if (!confirm(`CONFIRM: ${action.toUpperCase()} process ${pmId}?`)) return;
+
+            try {
+                const response = await fetch('/api/control', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-XSRFToken': REQUEST_XSRF_TOKEN
+                    },
+                    body: JSON.stringify({ node_id: nodeId, action: action, pm_id: pmId })
+                });
+                const data = await response.json();
+                if (data.status === 'ok') {
+                    alert(`COMMAND QUEUED: ${action.toUpperCase()}`);
+                } else {
+                    alert(`ERROR: ${data.error}`);
+                }
+            } catch (e) {
+                alert(`COMM ERROR: ${e}`);
+            }
+        }
+
         function renderNodes(nodes) {
             const container = document.getElementById('node-list');
             const masterStatusDiv = document.getElementById('master-status');
@@ -574,11 +597,26 @@
                                  <div style="display: flex; flex-direction: column; gap: 5px;">
                                      ${apps.map(app => `
                                          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8em; background: rgba(0, 243, 255, 0.03); padding: 5px 8px; border-left: 2px solid ${app.status === 'online' ? 'var(--neon-green)' : 'var(--alert-red)'};">
-                                             <span style="color: var(--text-main); font-weight: bold;">${app.name}</span>
-                                             <div style="display: flex; gap: 10px; color: var(--text-dim);">
-                                                 <span>${(app.memory / 1024 / 1024).toFixed(0)}MB</span>
-                                                 <span style="color: ${app.status === 'online' ? 'var(--neon-green)' : 'var(--alert-red)'}">${app.status.toUpperCase()}</span>
+                                             <div style="display:flex; flex-direction:column;">
+                                                 <span style="color: var(--text-main); font-weight: bold;">${app.name} <span style="color: var(--text-dim);">[${app.id}]</span></span>
+                                                 <div style="display: flex; gap: 10px; color: var(--text-dim); font-size: 0.9em;">
+                                                     <span>${(app.memory / 1024 / 1024).toFixed(0)}MB</span>
+                                                     <span style="color: ${app.status === 'online' ? 'var(--neon-green)' : 'var(--alert-red)'}">${app.status.toUpperCase()}</span>
+                                                 </div>
                                              </div>
+                                             
+                                             ${IS_AUTHED ? `
+                                             <div style="display: flex; gap: 5px;">
+                                                 <button onclick="controlApp('${n.node_id}', '${app.status === 'online' ? 'restart' : 'start'}', ${app.id})" 
+                                                    style="background: transparent; border: 1px solid var(--primary-cyan); color: var(--primary-cyan); padding: 2px 5px; cursor: pointer; font-family: inherit; font-size: 0.8em;">
+                                                    ${app.status === 'online' ? '↻' : '▶'}
+                                                 </button>
+                                                 <button onclick="controlApp('${n.node_id}', 'stop', ${app.id})" 
+                                                    style="background: transparent; border: 1px solid var(--alert-red); color: var(--alert-red); padding: 2px 5px; cursor: pointer; font-family: inherit; font-size: 0.8em;">
+                                                    ■
+                                                 </button>
+                                             </div>
+                                             ` : ''}
                                          </div>
                                      `).join('')}
                                  </div>
@@ -587,6 +625,7 @@
                     }
                 }
 
+                const div = document.createElement('div');
                 div.className = 'node-card';
                 // Note: removed inline styles that clash with CSS, added cyberpunk structure
                 div.innerHTML = `

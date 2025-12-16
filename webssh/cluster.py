@@ -37,13 +37,28 @@ class NodeManager:
         nodes_list = []
         now = time.time()
         for node in self.nodes.values():
-            # Create a copy to avoid mutating the original stored data permanently for display
             n = node.copy()
-            # Calculate status based on server time
-            # 30 seconds threshold for "online" (heartbeat is 10s)
             n['is_online'] = (now - n.get('last_seen', 0)) < 30
             nodes_list.append(n)
         return nodes_list
+
+    # Command Queue Logic
+    def __init__(self):
+        self.nodes = {} 
+        self.command_queue = {} # {node_id: [list_of_commands]}
+
+    def queue_command(self, node_id, command):
+        if node_id not in self.command_queue:
+            self.command_queue[node_id] = []
+        self.command_queue[node_id].append(command)
+        logging.info(f"Queued command for {node_id}: {command}")
+
+    def pop_commands(self, node_id):
+        if node_id in self.command_queue and self.command_queue[node_id]:
+            cmds = self.command_queue[node_id]
+            self.command_queue[node_id] = []
+            return cmds
+        return []
 
 node_manager = NodeManager()
 
@@ -69,7 +84,10 @@ class MasterHandler(tornado.web.RequestHandler):
         try:
             data = json.loads(self.request.body)
             node_manager.update_node(data)
-            self.write({"status": "ok"})
+            
+            # Send back any pending commands
+            commands = node_manager.pop_commands(data.get('node_id'))
+            self.write({"status": "ok", "commands": commands})
         except Exception as e:
             logging.error(f"Error processing heartbeat: {e}")
             self.set_status(400)
@@ -211,15 +229,41 @@ class SlaveWorker:
             headers['X-Cluster-Secret'] = self.secret
 
         try:
-            await self.http_client.fetch(
+            response = await self.http_client.fetch(
                 self.master_url,
                 method='POST',
                 body=json.dumps(data),
                 headers=headers
             )
             logging.debug("Heartbeat sent successfully")
+            
+            # Process response commands
+            if response.body:
+                resp_data = json.loads(response.body)
+                commands = resp_data.get('commands', [])
+                for cmd in commands:
+                    await self.execute_remote_command(cmd)
+                    
         except Exception as e:
             logging.error(f"Failed to send heartbeat to {self.master_url}: {e}")
+
+    async def execute_remote_command(self, cmd_data):
+        """Execute command received from Master"""
+        action = cmd_data.get('action') # start, stop, restart, delete
+        pm_id = cmd_data.get('pm_id')
+        
+        if action in ['start', 'stop', 'restart', 'delete'] and pm_id is not None:
+            logging.info(f"Executing remote command: {action} {pm_id}")
+            cmd = f'npx -y pm2 {action} {pm_id}'
+            try:
+                proc = await asyncio.create_subprocess_shell(
+                    cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+                await proc.communicate()
+            except Exception as e:
+                logging.error(f"Error executing {cmd}: {e}")
 
     def start(self):
         logging.info(f"Starting SlaveWorker connecting to {self.master_url}")
@@ -281,3 +325,35 @@ class NodeListHandler(BaseAuthHandler):
     def get(self):
         # Allow Guest Access to see list
         self.write(json.dumps(node_manager.get_nodes()))
+
+class NodeControlHandler(BaseAuthHandler):
+    """API to control remote nodes (send commands)."""
+    def post(self):
+        if not self.check_auth():
+            self.set_status(403)
+            return
+
+        try:
+            data = json.loads(self.request.body)
+            node_id = data.get('node_id')
+            action = data.get('action') # start, stop, restart, delete
+            pm_id = data.get('pm_id')
+
+            if not node_id or not action:
+                self.set_status(400)
+                self.write({'error': 'Missing node_id or action'})
+                return
+
+            # Queue command for the slave to pick up on next heartbeat
+            command = {
+                'action': action,
+                'pm_id': pm_id
+            }
+            node_manager.queue_command(node_id, command)
+            
+            logging.info(f"Admin queued command {action} for node {node_id}")
+            self.write({'status': 'ok', 'message': 'Command queued'})
+            
+        except Exception as e:
+            self.set_status(400)
+            self.write({'error': str(e)})
