@@ -3,257 +3,285 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>WebSSH Cluster Manager</title>
+    <title>WebSSH Cluster // MANAGER</title>
     <link href="static/img/favicon-32.png" rel="icon" type="image/png">
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;700;900&display=swap"
+        rel="stylesheet">
     <style>
+        :root {
+            --bg-color: #050510;
+            --panel-bg: rgba(20, 20, 30, 0.8);
+            --primary-cyan: #00f3ff;
+            --alert-red: #ff2a2a;
+            --neon-green: #00ff41;
+            --text-main: #e0e0e0;
+            --text-dim: #8892b0;
+            --border-glow: 0 0 10px rgba(0, 243, 255, 0.5);
+        }
+
         body {
-            font-family: sans-serif;
-            margin: 20px;
-            background: #f0f2f5;
+            font-family: 'JetBrains Mono', monospace;
+            /* 代码风格字体 */
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            background-image:
+                linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+            /* 网格背景 */
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        /* 扫描线效果 */
+        body::before {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 9999;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
+            position: relative;
+            z-index: 1;
         }
 
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--primary-cyan);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px var(--primary-cyan);
+            margin: 0;
+        }
+
+        /* HUD 风格卡片 */
         .node-card {
-            background: white;
-            border-radius: 8px;
+            background: var(--panel-bg);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            border-left: 4px solid var(--primary-cyan);
+            /* 左侧强调色 */
             padding: 20px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            backdrop-filter: blur(5px);
+            clip-path: polygon(0 0, 100% 0, 100% 85%, 98% 100%, 0 100%);
+            /* 切角效果 */
+            transition: all 0.3s ease;
+        }
+
+        .node-card:hover {
+            box-shadow: var(--border-glow);
+            border-color: var(--primary-cyan);
         }
 
         .node-info h3 {
-            margin: 0 0 10px 0;
+            margin: 0 0 15px 0;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
         }
 
         .stats {
             display: flex;
-            gap: 20px;
-            color: #666;
-            font-size: 0.9em;
-        }
-
-        .stat-item {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .actions a {
-            text-decoration: none;
-            background: #007bff;
-            color: white;
-            padding: 10px 20px;
+            gap: 30px;
+            color: var(--text-dim);
+            font-size: 0.85em;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
             border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
+        .stat-item strong {
+            color: var(--primary-cyan);
+            font-size: 1.1em;
+            display: block;
+            margin-top: 4px;
+        }
+
+        /* 按钮与链接 */
+        .actions a,
+        button,
+        .login-btn {
+            text-decoration: none;
+            background: rgba(0, 243, 255, 0.1) !important;
+            color: var(--primary-cyan) !important;
+            border: 1px solid var(--primary-cyan) !important;
+            padding: 8px 20px;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0, 243, 255, 0.2);
+            font-family: 'Orbitron', sans-serif;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+            border-radius: 0 !important;
+        }
+
+        .actions a:hover,
+        button:hover,
+        .login-btn:hover {
+            background: var(--primary-cyan) !important;
+            color: #000 !important;
+            box-shadow: 0 0 20px var(--primary-cyan);
+        }
+
+        /* 状态指示灯 */
         .status-dot {
-            height: 10px;
-            width: 10px;
-            border-radius: 50%;
+            height: 8px;
+            width: 8px;
             display: inline-block;
-            margin-right: 5px;
+            margin-right: 10px;
+            box-shadow: 0 0 8px currentColor;
         }
 
         .online {
-            background-color: #28a745;
+            background-color: var(--neon-green);
+            color: var(--neon-green);
         }
 
         .offline {
-            background-color: #dc3545;
+            background-color: var(--alert-red);
+            color: var(--alert-red);
         }
 
-        /* Modal Styles */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0, 0, 0, 0.5);
+        /* Master Status */
+        #master-status {
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(0, 0, 0, 0.6) !important;
+            border: 1px solid var(--text-dim);
+            color: var(--text-main) !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
         }
 
+        /* Modal */
         .modal-content {
-            background-color: #fefefe;
-            margin: 15% auto;
-            padding: 20px;
-            border: 1px solid #888;
-            width: 300px;
-            border-radius: 8px;
-            text-align: center;
+            background-color: #0a0a12;
+            border: 1px solid var(--primary-cyan);
+            color: var(--text-main);
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.2);
+            border-radius: 0;
         }
 
-        .close {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
+        .modal h2 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--primary-cyan);
+            border-bottom: 1px solid rgba(0, 243, 255, 0.3);
+            padding-bottom: 10px;
         }
 
-        .close:hover,
-        .close:focus {
-            color: black;
-            text-decoration: none;
-            cursor: pointer;
+        input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #333;
+            color: var(--primary-cyan);
+            font-family: 'JetBrains Mono', monospace;
+            padding: 10px;
         }
 
-        .login-btn {
-            background: #007bff;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 4px;
-            border: none;
-            cursor: pointer;
-            margin-top: 10px;
+        input:focus {
+            outline: none;
+            border-color: var(--primary-cyan);
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
         }
 
-        /* Toolbar Styles */
-        .toolbar {
-            display: flex;
-            justify-content: flex-end;
-            margin-bottom: 10px;
-            gap: 15px;
-            padding: 0 5px;
-        }
-
-        .toolbar-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 1.1rem;
-            color: #555;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            opacity: 0.7;
-            transition: opacity 0.2s;
-        }
-
-        .toolbar-btn:hover {
-            opacity: 1;
-        }
-
-        /* Tab Styles */
+        /* Tabs */
         .tabs {
-            display: flex;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid rgba(0, 243, 255, 0.3);
         }
 
         .tab-btn {
-            padding: 10px 20px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 1rem;
-            opacity: 0.6;
-            margin-right: 5px;
-            border-bottom: 3px solid transparent;
-        }
-
-        .tab-btn:hover {
-            opacity: 1;
-            background: #f8f9fa;
+            color: var(--text-dim);
+            font-family: 'Orbitron', sans-serif;
+            border-radius: 0;
         }
 
         .tab-btn.active {
-            opacity: 1;
-            border-bottom: 3px solid #007bff;
-            font-weight: bold;
+            color: var(--primary-cyan);
+            border-bottom: 3px solid var(--primary-cyan);
+            text-shadow: 0 0 8px var(--primary-cyan);
         }
 
-        .tab-content {
-            display: none;
+        .tab-btn:hover {
+            background: rgba(0, 243, 255, 0.05);
         }
 
-        .tab-content.active {
-            display: block;
+        /* Toolbar */
+        .toolbar-btn {
+            color: var(--text-main);
         }
 
-        .input-group input {
-            border: 1px solid #ccc;
-            border-radius: 4px;
+        .toolbar-btn:hover {
+            color: var(--primary-cyan);
+            text-shadow: 0 0 5px var(--primary-cyan);
         }
 
-        /* Grid Layout Styles */
+        /* Grid Layout Override */
         #node-list.grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
             gap: 20px;
         }
 
         #node-list.grid .node-card {
-            margin-bottom: 0;
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-        #node-list.grid .node-info {
-            width: 100%;
-            margin-bottom: 15px;
-        }
-
-        #node-list.grid .actions {
-            width: 100%;
-        }
-
-        #node-list.grid .stats {
-            flex-wrap: wrap;
+            border-top: 2px solid var(--primary-cyan);
+            border-left: 1px solid rgba(0, 243, 255, 0.3);
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid rgba(0,243,255,0.2); padding-bottom: 20px;">
             <div style="display: flex; align-items: center; gap: 20px;">
-                <h1 style="margin: 0;">Cluster Dashboard</h1>
-                <div id="master-status"
-                    style="font-size: 0.9rem; color: #666; display: flex; gap: 15px; background: white; padding: 5px 15px; border-radius: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                    <!-- Master Status injected here -->
+                <h1>Cluster // DASHBOARD</h1>
+                <div id="master-status" style="font-size: 0.8rem; display: flex; gap: 15px; padding: 5px 15px;">
                 </div>
             </div>
             <div id="auth-controls"></div>
         </div>
 
-        <!-- Tab Navigation -->
         <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('cluster', event)">Cluster</button>
+            <button class="tab-btn active" onclick="switchTab('cluster', event)">[ SYSTEM_NODES ]</button>
         </div>
 
-        <!-- Cluster Tab -->
-        <div id="tab-cluster" class="tab-content active">
+        <div id="tab-cluster" class="tab-content active" style="margin-top: 20px;">
             <div class="toolbar">
                 <button class="toolbar-btn" onclick="toggleView()" title="Example: List/Grid"><span
-                        id="view-icon">≣</span> View</button>
+                        id="view-icon">≣</span> VIEW_MODE</button>
                 <button class="toolbar-btn" onclick="toggleSort()" title="Sort"><span id="sort-icon">⬇️</span>
-                    Sort</button>
+                    SORT_DATA</button>
             </div>
             <div id="node-list">
-                <p>Loading nodes...</p>
+                <p style="color: var(--primary-cyan); animation: blink 1s infinite;">INITIALIZING CONNECTION...</p>
             </div>
         </div>
     </div>
 
-    <!-- Login Modal -->
     <div id="loginModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeLogin()">&times;</span>
-            <h2>Login</h2>
-            <input type="password" id="passwordInput" placeholder="Enter Password"
-                style="width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box;"
-                onkeypress="handleEnter(event)">
-            <button class="login-btn" onclick="performLogin()">Submit</button>
-            <p id="loginError" style="color: red; display: none; margin-top: 10px;"></p>
+            <h2>ACCESS REQUIRED</h2>
+            <input type="password" id="passwordInput" placeholder="ENTER SECURITY KEY"
+                style="width: 100%; margin: 15px 0; box-sizing: border-box;" onkeypress="handleEnter(event)">
+            <button class="login-btn" onclick="performLogin()" style="width: 100%">AUTHENTICATE</button>
+            <p id="loginError" style="color: var(--alert-red); display: none; margin-top: 10px; font-size: 0.8em;"></p>
         </div>
     </div>
 
@@ -294,10 +322,11 @@
         // --- Auth & Main Logic ---
         function initAuthUI() {
             const container = document.getElementById('auth-controls');
+            // Style overridden by CSS via class logic below, simplified HTML here
             if (IS_AUTHED) {
-                container.innerHTML = `<button onclick="connect('/webssh')" style="background: #28a745; color: white; padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer;">WebSSH</button>`;
+                container.innerHTML = `<button onclick="connect('/webssh')" class="login-btn" style="border-color: var(--neon-green)!important; color: var(--neon-green)!important;">> LAUNCH_WEBSSH</button>`;
             } else {
-                container.innerHTML = `<button onclick="openLogin()" style="background: #007bff; color: white; padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer;">Login</button>`;
+                container.innerHTML = `<button onclick="openLogin()" class="login-btn">LOGIN_SYSTEM</button>`;
             }
         }
 
@@ -336,11 +365,11 @@
                     } catch (e) {
                         errorMsg = "Login Failed (" + res.status + " " + res.statusText + ")";
                     }
-                    err.textContent = errorMsg;
+                    err.textContent = "Error: " + errorMsg;
                     err.style.display = 'block';
                 }
             } catch (e) {
-                err.textContent = "Error: " + e;
+                err.textContent = "System Error: " + e;
                 err.style.display = 'block';
             }
         }
@@ -396,10 +425,10 @@
                 masterStatusDiv.innerHTML = `
                     <span style="display: flex; align-items: center;">
                         <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
-                        Master (${isOnline ? 'Online' : 'Offline'})
+                        MASTER_NODE [${isOnline ? 'ONLINE' : 'OFFLINE'}]
                     </span>
-                    <span>CPU: <strong>${parseFloat(master.stats.cpu || 0).toFixed(1)}%</strong></span>
-                    <span>RAM: <strong>${(master.stats.ram_usage / 1024 / 1024).toFixed(0)} MB</strong></span>
+                    <span style="color: var(--primary-cyan)">CPU: <strong>${parseFloat(master.stats.cpu || 0).toFixed(1)}%</strong></span>
+                    <span style="color: var(--primary-cyan)">RAM: <strong>${(master.stats.ram_usage / 1024 / 1024).toFixed(0)} MB</strong></span>
                 `;
                 masterStatusDiv.style.display = 'flex';
             } else {
@@ -408,7 +437,7 @@
 
             container.innerHTML = '';
             if (nodes.length === 0) {
-                container.innerHTML = '<p>No slave nodes registered yet.</p>';
+                container.innerHTML = '<p style="color: var(--text-dim)">No slave units detected via network scan.</p>';
                 return;
             }
 
@@ -457,28 +486,29 @@
 
                 const div = document.createElement('div');
                 div.className = 'node-card';
+                // Note: removed inline styles that clash with CSS, added cyberpunk structure
                 div.innerHTML = `
                     <div class="node-info">
                         <h3>
                             <span class="status-dot ${isAnyOnline ? 'online' : 'offline'}"></span>
                             ${name} 
-                            <span style="font-size: 0.8em; color: ${isAnyOnline ? '#28a745' : '#dc3545'}; margin-right: 10px;">
-                                (${onlineCount}/${groupNodes.length} Online)
+                            <span style="font-size: 0.6em; color: ${isAnyOnline ? 'var(--neon-green)' : 'var(--alert-red)'}; margin-left: 10px; border: 1px solid currentColor; padding: 2px 5px;">
+                                ${onlineCount}/${groupNodes.length} ACTIVE
                             </span>
                         </h3>
                         <div class="stats">
-                            <div class="stat-item"><span>Avg CPU</span> <strong>${avgCpu.toFixed(1)}%</strong></div>
-                            <div class="stat-item"><span>Total RAM</span> <strong>${(totalRam / 1024 / 1024).toFixed(0)} MB</strong></div>
-                            <div class="stat-item"><span>Max Disk</span> <strong>${maxDisk.toFixed(0)}%</strong></div>
-                            <div class="stat-item"><span>Procs</span> <strong>${totalProcs}</strong></div>
+                            <div class="stat-item"><span>AVG CPU</span> <strong>${avgCpu.toFixed(1)}%</strong></div>
+                            <div class="stat-item"><span>RAM USE</span> <strong>${(totalRam / 1024 / 1024).toFixed(0)} MB</strong></div>
+                            <div class="stat-item"><span>MAX DSK</span> <strong>${maxDisk.toFixed(0)}%</strong></div>
+                            <div class="stat-item"><span>PROCS</span> <strong>${totalProcs}</strong></div>
                         </div>
                     </div>
-                    <div class="actions" style="display:flex; flex-direction:column; gap:5px;">
+                    <div class="actions" style="display:flex; flex-direction:column; gap:8px;">
                         ${IS_AUTHED ? groupNodes.map(n => `
-                            <a href="#" onclick="connect('${n.url}')" style="font-size: 0.9em; padding: 5px 10px;">
-                                Connect (${n.is_online ? 'Online' : 'Offline'})
+                            <a href="#" onclick="connect('${n.url}')">
+                                [ CONNECT_UNIT: ${n.is_online ? 'READY' : 'LOST'} ]
                             </a>
-                        `).join('') : '<span style="color:#999; font-size:0.9em;">Guest Mode (Login to Connect)</span>'}
+                        `).join('') : '<span style="color:var(--text-dim); font-size:0.8em; font-style:italic;">[ GUEST MODE // READ ONLY ]</span>'}
                     </div>
                 `;
                 container.appendChild(div);

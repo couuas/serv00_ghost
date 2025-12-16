@@ -4,335 +4,254 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WebSSH Console</title>
+  <title>WebSSH // SECURE_TERM</title>
   <link href="static/img/favicon-32.png" rel="icon" type="image/png">
   <link href="static/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
   <link href="static/css/xterm.min.css" rel="stylesheet" type="text/css" />
   <link href="static/css/fullscreen.min.css" rel="stylesheet" type="text/css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
   <link rel="manifest" href="static/manifest.json">
-  <meta name="theme-color" content="#2c3e50">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="WebSSH">
-  <link rel="apple-touch-icon" href="static/img/favicon-32.png">
+  <meta name="theme-color" content="#050510">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@500;700&display=swap"
+    rel="stylesheet">
+
   <style>
+    /* 赛博朋克全局变量覆盖 */
     :root {
-      --primary-color: #2c3e50;
-      --secondary-color: #34495e;
-      --accent-color: #3498db;
-      --danger-color: #e74c3c;
-      --success-color: #2ecc71;
-      --warning-color: #f1c40f;
-      --light-bg: #ecf0f1;
-      --card-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+      --bg-dark: #050510;
+      --card-bg: rgba(16, 20, 30, 0.85);
+      --neon-cyan: #00f3ff;
+      --neon-pink: #ff00ff;
+      --neon-yellow: #fcee0a;
+      --text-main: #c0c0c5;
+      --border-color: rgba(0, 243, 255, 0.3);
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      /* 六边形网格背景 */
+      background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyOCIgaGVpZ2h0PSI0OSI+PHBhdGggZmlsbD0iIzFhMWEyNCIgZmlsbC1vcGFjaXR5PSIwLjQiIGQ9Ik0xMy45OTYgMjQuMjYyMTcuMzI4LTI0LjI2MiAxMy45OTYgMjQuMjYyek0xMy45OTYgMjQuMjYybDE3LjMyOCAyNC4yNjJWMjQuMjYyek0wIDI0LjI2MkwxMy45OTYgMHY0OC41MjR6Ii8+PC9zdmc+');
+      color: var(--text-main);
+      font-family: 'Share Tech Mono', monospace;
+      /* 终端字体 */
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* 扫描线效果 */
+    body::after {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0) 50%, rgba(0, 0, 0, 0.2) 50%, rgba(0, 0, 0, 0.2));
+      background-size: 100% 4px;
+      z-index: 999;
+      pointer-events: none;
     }
 
     .main-container {
       max-width: 1000px;
       width: 100%;
       padding: 2rem;
-      /* 移动内边距到容器 */
+      position: relative;
+      z-index: 2;
     }
 
+    /* 主面板样式 */
     .form-container {
-      background: white;
-      border-radius: 15px;
-      box-shadow: var(--card-shadow);
-      padding: 2.5rem;
-      margin-bottom: 2rem;
+      background: var(--card-bg);
       backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      height: auto;
-      /* 改为自动高度 */
-    }
-
-    .page-title {
-      color: var(--primary-color);
-      font-weight: 600;
-      font-size: 2rem;
-      margin-bottom: 2rem;
-      text-align: center;
+      border: 1px solid var(--border-color);
+      border-radius: 0;
+      /* 移除圆角 */
+      box-shadow: 0 0 20px rgba(0, 243, 255, 0.1);
+      /* 切角效果 */
+      clip-path: polygon(20px 0, 100% 0,
+          100% calc(100% - 20px), calc(100% - 20px) 100%,
+          0 100%, 0 20px);
+      padding: 3rem;
       position: relative;
     }
 
-    .page-title:after {
-      content: '';
-      display: block;
-      width: 60px;
-      height: 4px;
-      background: var(--accent-color);
-      margin: 1rem auto;
-      border-radius: 2px;
+    /* 装饰性边角 */
+    .form-container::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 20px;
+      height: 20px;
+      border-top: 2px solid var(--neon-cyan);
+      border-left: 2px solid var(--neon-cyan);
     }
 
+    .form-container::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 20px;
+      height: 20px;
+      border-bottom: 2px solid var(--neon-cyan);
+      border-right: 2px solid var(--neon-cyan);
+    }
+
+    .page-title {
+      font-family: 'Orbitron', sans-serif;
+      color: var(--neon-cyan);
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      text-shadow: 0 0 10px var(--neon-cyan);
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1rem;
+    }
+
+    .page-title:after {
+      display: none;
+    }
+
+    /* 移除原有下划线 */
+
+    label {
+      color: var(--neon-cyan);
+      font-size: 0.8rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    /* 输入框样式重写 */
     .form-control {
-      border: 2px solid #eee;
-      border-radius: 8px;
-      padding: 1rem 1.2rem;
-      /* 增加内边距 */
-      height: calc(3rem + 2px);
-      /* 设置固定高度 */
-      line-height: 1.5;
-      /* 设置行高 */
-      transition: all 0.3s ease;
-      background: #f8f9fa;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid #333;
+      border-left: 3px solid #333;
+      color: #fff;
+      border-radius: 0;
+      font-family: 'Share Tech Mono', monospace;
     }
 
     .form-control:focus {
-      border-color: var(--accent-color);
-      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
-      background: white;
+      background: rgba(0, 243, 255, 0.05);
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+      color: #fff;
     }
 
-    label {
-      font-weight: 500;
-      color: var(--secondary-color);
-      margin-bottom: 0.5rem;
-      font-size: 0.9rem;
+    .form-control::placeholder {
+      color: #555;
     }
 
-    .form-section {
-      margin-bottom: 1.5rem;
-    }
-
+    /* 按钮组样式 */
     .btn {
-      border-radius: 8px;
-      padding: 0.8rem 1.5rem;
-      font-weight: 500;
-      letter-spacing: 0.3px;
-      transition: all 0.3s ease;
+      border-radius: 0;
+      font-family: 'Orbitron', sans-serif;
       text-transform: uppercase;
-      font-size: 0.9rem;
+      letter-spacing: 1px;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid transparent;
+      transition: all 0.2s;
     }
 
     .btn-primary {
-      background: var(--accent-color);
-      border: none;
-      box-shadow: 0 4px 15px rgba(52, 152, 219, 0.2);
+      background: transparent;
+      color: var(--neon-cyan);
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 5px var(--neon-cyan);
     }
 
     .btn-primary:hover {
-      background: #2980b9;
+      background: var(--neon-cyan);
+      color: #000;
+      box-shadow: 0 0 20px var(--neon-cyan);
       transform: translateY(-2px);
     }
 
     .btn-danger {
-      background: var(--danger-color);
-      border: none;
+      background: transparent;
+      color: var(--neon-pink);
+      border-color: var(--neon-pink);
+    }
+
+    .btn-danger:hover {
+      background: var(--neon-pink);
+      color: #000;
+      box-shadow: 0 0 20px var(--neon-pink);
     }
 
     .btn-info {
-      background: var(--success-color);
-      border: none;
+      background: transparent;
+      color: var(--neon-yellow);
+      border-color: var(--neon-yellow);
     }
 
-    #waiter {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(0, 0, 0, 0.9);
-      color: white;
-      padding: 1.5rem 3rem;
-      border-radius: 50px;
-      font-size: 1.1rem;
-      backdrop-filter: blur(5px);
-      z-index: 1000;
+    .btn-info:hover {
+      background: var(--neon-yellow);
+      color: #000;
+      box-shadow: 0 0 20px var(--neon-yellow);
     }
 
-    #terminal {
-      margin-top: 1.5rem;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: var(--card-shadow);
-    }
-
-    #sshlink {
-      height: 70px;
-      /* 固定高度 */
-      flex: 1;
-      overflow-x: auto;
-      white-space: nowrap;
-      margin: 0;
-      padding: 0.5rem 1rem;
-      background: var(--light-bg);
-      border-radius: 8px;
-      font-size: 0.9rem;
-      transition: opacity 0.3s ease;
-      display: flex;
-      align-items: center;
-      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .link-text {
-      padding: 0.5rem;
-      flex: 1;
-      overflow-x: scroll;
-      white-space: nowrap;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-    }
-
-    .link-text::-webkit-scrollbar {
-      display: none;
-    }
-
-    .github-corner {
-      position: fixed;
-      top: 0;
-      right: 0;
-      z-index: 100;
-      transition: opacity 0.3s ease;
-      /* 添加过渡效果 */
-    }
-
-    .github-corner.hidden {
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    .github-corner svg {
-      fill: var(--accent-color);
-      color: var(--light-bg);
-      position: absolute;
-      top: 0;
-      right: 0;
-      border: 0;
-      width: 80px;
-      height: 80px;
-    }
-
-    .github-corner:hover .octo-arm {
-      animation: octocat-wave 560ms ease-in-out;
-    }
-
-    .action-buttons {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      margin-top: 2rem;
-      margin-bottom: 2rem;
-      /* 添加底部间距 */
-    }
-
-    .button-group {
-      display: flex;
-      gap: 1rem;
-      flex-shrink: 0;
-      /* 防止按钮被压缩 */
-    }
-
-    /* 文件选择按钮的基本样式 */
+    /* 文件上传按钮特别处理 */
     .file-btn {
-      /* 移除右上角和右下角的圆角 */
-      border-top-right-radius: 0;
-      border-bottom-right-radius: 0;
-      /* 设置内边距,使按钮更大更易点击 */
-      padding: 0.8rem 1.2rem;
-      /* 使用预定义的主题色作为背景色 */
-      background: var(--secondary-color);
-      /* 移除边框 */
-      border: none;
-      /* 添加过渡效果,使样式变化更平滑 */
-      transition: all 0.3s ease;
-      /* 设置相对定位,为光效动画做准备 */
-      position: relative;
-      /* 隐藏超出按钮范围的内容 */
-      overflow: hidden;
-    }
-
-    /* 鼠标悬停时的按钮样式 */
-    .file-btn:hover {
-      /* 添加渐变背景,使按钮更有层次感 */
-      background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
-      /* 添加发光效果 */
-      box-shadow: 0 0 15px rgba(52, 152, 219, 0.5);
-      /* 轻微放大按钮,增加交互感 */
-      transform: scale(1.05);
-    }
-
-    /* 创建光效动画的元素 */
-    .file-btn:before {
-      /* 创建伪元素 */
-      content: '';
-      /* 绝对定位,相对于按钮定位 */
-      position: absolute;
-      top: 0;
-      /* 初始位置在按钮左侧外部 */
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      /* 创建透明渐变,形成光效 */
-      background: linear-gradient(120deg,
-          transparent,
-          rgba(255, 255, 255, 0.2),
-          transparent);
-      /* 添加过渡效果 */
-      transition: 0.5s;
-    }
-
-    /* 鼠标悬停时触发光效动画 */
-    .file-btn:hover:before {
-      /* 将光效移动到按钮右侧,形成扫光效果 */
-      left: 100%;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border-radius: 0 !important;
     }
 
     .file-input {
-      border-top-left-radius: 0;
-      border-bottom-left-radius: 0;
-      background: #f8f9fa;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid #333;
     }
 
-    .input-group-btn {
-      margin: 0;
-      padding: 0;
+    /* SSH 链接显示区 */
+    #sshlink {
+      background: #000;
+      border: 1px solid var(--border-color);
+      border-radius: 0;
+      color: var(--neon-cyan);
+      font-family: 'Share Tech Mono', monospace;
+      margin-top: 20px;
     }
 
-    .copy-btn {
-      color: var(--primary-color);
-      margin-left: auto;
-      cursor: pointer;
+    #sshlink .fa-copy {
+      color: var(--neon-pink);
     }
 
-    @media (max-width: 768px) {
-      .main-container {
-        padding: 1rem;
-        /* 移动端减小内边距 */
-      }
-
-      .form-container {
-        padding: 1.5rem;
-      }
-
-      .btn {
-        width: 100%;
-        margin-bottom: 0.5rem;
-      }
-
-      .github-corner:hover .octo-arm {
-        animation: none;
-      }
-
-      .github-corner .octo-arm {
-        animation: octocat-wave 560ms ease-in-out;
-      }
-
-      .action-buttons {
-        flex-direction: column;
-      }
-
-      .button-group {
-        width: 100%;
-        flex-direction: column;
-      }
-
-      #sshlink {
-        width: 100%;
-      }
+    #sshlink .fa-copy:hover {
+      text-shadow: 0 0 8px var(--neon-pink);
     }
 
-    {% if font.family %}
+    /* Github Corner 颜色调整 */
+    .github-corner svg {
+      fill: var(--neon-cyan);
+      color: var(--bg-dark);
+    }
+
+    /* 等待提示 */
+    #waiter {
+      background: rgba(0, 0, 0, 0.9);
+      border: 1px solid var(--neon-cyan);
+      color: var(--neon-cyan);
+      font-family: 'Orbitron', sans-serif;
+      box-shadow: 0 0 30px var(--neon-cyan);
+      border-radius: 0;
+    }
+
+    /* Terminal 容器 */
+    #terminal {
+      border: 1px solid var(--border-color);
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    }
+
+    /* 兼容性处理 */
+      {
+      % if font.family %
+    }
 
     @font-face {
       font-family: '{{ font.family }}';
@@ -341,37 +260,19 @@
 
     body {
       font-family: '{{ font.family }}',
-      -apple-system,
-      BlinkMacSystemFont,
-      'Segoe UI',
-      system-ui,
-      Roboto,
-      Oxygen,
-      Ubuntu,
-      Cantarell,
-      'Open Sans',
-      'Helvetica Neue',
-      sans-serif;
-      background: linear-gradient(135deg, #f6f8fa 0%, #e9ecef 100%);
-      min-height: 100vh;
-      padding: 0;
-      /* 移除原有内边距 */
-      color: var(--primary-color);
-      display: flex;
-      /* 添加flex布局 */
-      align-items: center;
-      /* 垂直居中 */
-      justify-content: center;
-      /* 水平居中 */
-      margin: 0;
+      'Share Tech Mono',
+      monospace;
     }
 
-    {% end %}
+      {
+      % end %
+    }
   </style>
 </head>
 
 <body>
   <script>
+    // 逻辑完全保留
     function updateSSHlink() {
       var thisPageProtocol = window.location.protocol;
       var thisPageUrl = window.location.host;
@@ -393,32 +294,24 @@
 
       var sshlinkstr = thisPageProtocol + "//" + thisPageUrl + "/?hostname=" + hostnamestr + "&port=" + portstr + "&username=" + usrnamestr + "&password=" + passwdstrAfterBase64 + "&command=" + initcmdstrAfterURI;
 
-      // 获取元素
       var sshlinkElement = document.querySelector("#sshlink .link-text");
       var sshlink = document.getElementById("sshlink");
 
-      // 清空之前的内容
       sshlinkElement.textContent = '';
-
-      // 显示容器
       sshlink.classList.add('active');
 
-      // 实现打字机效果
       let i = 0;
       const typeWriter = () => {
         if (i < sshlinkstr.length) {
           sshlinkElement.textContent += sshlinkstr.charAt(i);
           i++;
-          setTimeout(typeWriter, 6); // 每个字符之间的延迟
+          setTimeout(typeWriter, 6);
         } else {
           sshlinkElement.classList.remove('typing');
         }
       }
-
-      // 开始打字效果
-      setTimeout(typeWriter, 300); // 等待容器动画开始后再开始打字
+      setTimeout(typeWriter, 300);
     }
-
 
     function copySSHLink() {
       const linkText = document.querySelector("#sshlink .link-text").textContent;
@@ -433,12 +326,10 @@
       });
     }
 
-    // 确保DOM加载完成后绑定事件
     document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('sshlinkBtn').addEventListener('click', updateSSHlink);
     });
 
-    // 注册 Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/static/js/service-worker.js')
@@ -451,6 +342,7 @@
       });
     }
   </script>
+
   <a href="https://github.com/cmliu/webssh" target="_blank" class="github-corner" aria-label="View source on Github">
     <svg viewBox="0 0 250 250" aria-hidden="true">
       <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path>
@@ -462,22 +354,23 @@
         fill="currentColor" class="octo-body"></path>
     </svg>
   </a>
-  <div id="waiter" style="display: none">正在建立连接...</div>
+
+  <div id="waiter" style="display: none">Initializing Uplink...</div>
 
   <div class="main-container">
     <div class="form-container" style="display: none">
-      <h1 class="page-title">WebSSH Console</h1>
+      <h1 class="page-title">SECURE // TERMINAL</h1>
 
       <form id="connect" action="" method="post" enctype="multipart/form-data" {% if debug %} novalidate{% end %}>
         <div class="form-section">
           <div class="row">
             <div class="col-md-6 mb-3">
-              <label for="hostname">主机地址 (Hostname)</label>
+              <label for="hostname">TARGET_HOST</label>
               <input class="form-control" type="text" id="hostname" name="hostname" value="" required
-                placeholder="请输入主机地址">
+                placeholder="192.168.x.x">
             </div>
             <div class="col-md-6 mb-3">
-              <label for="port">端口 (Port)</label>
+              <label for="port">PORT</label>
               <input class="form-control" type="number" id="port" name="port" placeholder="22" value="" min=1 max=65535>
             </div>
           </div>
@@ -486,13 +379,13 @@
         <div class="form-section">
           <div class="row">
             <div class="col-md-6 mb-3">
-              <label for="username">用户名 (Username)</label>
+              <label for="username">USER_ID</label>
               <input class="form-control" type="text" id="username" name="username" value="" required
-                placeholder="请输入用户名">
+                placeholder="root">
             </div>
             <div class="col-md-6 mb-3">
-              <label for="password">密码 (Password)</label>
-              <input class="form-control" type="password" id="password" name="password" value="" placeholder="请输入密码">
+              <label for="password">ACCESS_KEY (PWD)</label>
+              <input class="form-control" type="password" id="password" name="password" value="" placeholder="******">
             </div>
           </div>
         </div>
@@ -500,22 +393,23 @@
         <div class="form-section">
           <div class="row">
             <div class="col-md-6 mb-3">
-              <label for="privatekey">私钥 (Private Key)</label>
+              <label for="privatekey">IDENTITY_FILE (KEY)</label>
               <div class="input-group">
                 <label class="input-group-btn">
                   <span class="btn btn-primary file-btn">
-                    <i class="fas fa-folder-open"></i> 选择文件
+                    <i class="fas fa-microchip"></i> LOAD_FILE
                     <input type="file" id="privatekey" name="privatekey" style="display: none;"
-                      onchange="document.getElementById('showFilename').value = this.files.length ? this.files[0].name : '未选择文件'">
+                      onchange="document.getElementById('showFilename').value = this.files.length ? this.files[0].name : 'NO_FILE_LOADED'">
                   </span>
                 </label>
-                <input type="text" class="form-control file-input" id="showFilename" placeholder="未选择私钥文件" readonly>
+                <input type="text" class="form-control file-input" id="showFilename" placeholder="NO_KEY_DETECTED"
+                  readonly>
               </div>
             </div>
             <div class="col-md-6 mb-3">
-              <label for="passphrase">密钥口令 (Passphrase)</label>
+              <label for="passphrase">KEY_PASSPHRASE</label>
               <input class="form-control" type="password" id="passphrase" name="passphrase" value=""
-                placeholder="如果需要请输入密钥口令">
+                placeholder="OPTIONAL">
             </div>
           </div>
         </div>
@@ -523,12 +417,12 @@
         <div class="form-section">
           <div class="row">
             <div class="col-md-6 mb-3">
-              <label for="totp">动态验证码 (TOTP)</label>
-              <input class="form-control" type="password" id="totp" name="totp" value="" placeholder="如果启用请输入动态验证码">
+              <label for="totp">2FA_TOKEN (TOTP)</label>
+              <input class="form-control" type="password" id="totp" name="totp" value="" placeholder="### ###">
             </div>
             <div class="col-md-6 mb-3">
-              <label for="initcmd">初始命令 (Init Command)</label>
-              <input class="form-control" type="text" id="initcmd" name="initcmd" value="" placeholder="登录后要执行的命令">
+              <label for="initcmd">AUTO_EXEC</label>
+              <input class="form-control" type="text" id="initcmd" name="initcmd" value="" placeholder="Command...">
             </div>
           </div>
         </div>
@@ -539,13 +433,13 @@
         <div class="action-buttons">
           <div class="button-group">
             <button type="submit" class="btn btn-primary">
-              <i class="fas fa-terminal"></i> 连接
+              <i class="fas fa-terminal"></i> ESTABLISH_LINK
             </button>
             <button type="reset" class="btn btn-danger">
-              <i class="fas fa-redo"></i> 重置
+              <i class="fas fa-redo"></i> FLUSH_DATA
             </button>
             <button type="button" class="btn btn-info" id="sshlinkBtn">
-              <i class="fas fa-link"></i> 生成链接
+              <i class="fas fa-link"></i> GEN_URI
             </button>
           </div>
         </div>
