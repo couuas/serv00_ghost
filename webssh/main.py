@@ -43,48 +43,7 @@ def make_handlers(loop, options):
             handlers.append((r'/ws', WsockHandler, dict(loop=loop)))
             handlers.append((r'/webssh/ws', WsockHandler, dict(loop=loop)))
 
-        # Monitor API Handlers
-        from webssh.monitor import monitor_manager, StatusChecker, TelegramBot, monitor_scheduler, status_persistence
-        
-        # Start the scheduler immediately
-        monitor_scheduler.start()
-        
-        class MonitorAccountsHandler(tornado.web.RequestHandler):
-            def get(self):
-                self.write(monitor_manager.get_accounts())
-            
-        class MonitorCheckHandler(tornado.web.RequestHandler):
-            async def post(self):
-                accounts = monitor_manager.get_accounts()
-                results = {}
-                for user in accounts:
-                    status = await StatusChecker.check_account(user)
-                    results[user] = {"status": status, "season": accounts[user].get('season', '')}
-                
-                # Persist results
-                status_persistence.save_status(results)
-                self.write({"results": results})
-
-        class MonitorStatusHandler(tornado.web.RequestHandler):
-            def get(self):
-                self.write(status_persistence.load_status())
-
-        class MonitorTelegramHandler(tornado.web.RequestHandler):
-            def get(self):
-                self.write(monitor_manager.get_settings())
-
-            def post(self):
-                data = json.loads(self.request.body)
-                monitor_manager.save_settings(data)
-                monitor_scheduler.start() # Restart scheduler with new settings
-                self.write({"message": "Settings saved"})
-
-        handlers.extend([
-            (r'/api/monitor/accounts', MonitorAccountsHandler),
-            (r'/api/monitor/check', MonitorCheckHandler),
-            (r'/api/monitor/status', MonitorStatusHandler),
-            (r'/api/monitor/telegram', MonitorTelegramHandler)
-        ])
+            handlers.append((r'/webssh/ws', WsockHandler, dict(loop=loop)))
         
     return handlers
 

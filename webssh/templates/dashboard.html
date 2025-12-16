@@ -228,14 +228,11 @@
         <!-- Tab Navigation -->
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('cluster', event)">Cluster</button>
-            <button class="tab-btn" onclick="switchTab('settings', event)">Settings</button>
         </div>
 
         <!-- Cluster Tab -->
         <div id="tab-cluster" class="tab-content active">
             <div class="toolbar">
-                <button id="check-all-btn" class="toolbar-btn" onclick="checkAllAccounts()"
-                    style="background: #28a745; color: white; margin-right: 15px;">⚡ Check All</button>
                 <button class="toolbar-btn" onclick="toggleView()" title="Example: List/Grid"><span
                         id="view-icon">≣</span> View</button>
                 <button class="toolbar-btn" onclick="toggleSort()" title="Sort"><span id="sort-icon">⬇️</span>
@@ -243,34 +240,6 @@
             </div>
             <div id="node-list">
                 <p>Loading nodes...</p>
-            </div>
-        </div>
-
-        <!-- Settings Tab -->
-        <div id="tab-settings" class="tab-content">
-            <div class="header">
-                <h1>Monitor Settings</h1>
-            </div>
-            <div style="background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                <h3>Telegram Notifications</h3>
-                <div style="margin-bottom: 15px;">
-                    <label>Bot Token:</label><br>
-                    <input type="text" id="tgToken"
-                        style="width: 100%; max-width: 400px; padding: 8px; margin-top: 5px;">
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <label>Chat ID:</label><br>
-                    <input type="text" id="tgChatId"
-                        style="width: 100%; max-width: 400px; padding: 8px; margin-top: 5px;">
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <label>Check Interval (Minutes):</label><br>
-                    <input type="number" id="tgInterval" value="60"
-                        style="width: 100px; padding: 8px; margin-top: 5px;">
-                </div>
-                <button onclick="saveSettings()"
-                    style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">Save
-                    Settings</button>
             </div>
         </div>
     </div>
@@ -297,7 +266,6 @@
 
         let currentSort = 'asc'; // 'asc' or 'desc'
         let currentView = 'list'; // 'list' or 'grid'
-        let accountStatusMap = {}; // specific persistence
         let lastNodes = []; // store for re-rendering
 
         function connect(url) {
@@ -318,72 +286,9 @@
             if (event) {
                 event.currentTarget.classList.add('active');
             } else {
-                const index = ['cluster', 'settings'].indexOf(tab);
+                const index = ['cluster'].indexOf(tab);
                 if (index >= 0) document.querySelectorAll('.tab-btn')[index].classList.add('active');
             }
-
-            if (tab === 'settings') {
-                loadSettings();
-            }
-        }
-
-        // --- Monitor Check Logic ---
-        async function checkAllAccounts() {
-            const btn = document.getElementById('check-all-btn');
-            const originalText = btn.textContent;
-            btn.textContent = "Checking...";
-            btn.disabled = true;
-            try {
-                const headers = { 'Content-Type': 'application/json' };
-                if (REQUEST_XSRF_TOKEN) headers['X-XSRFToken'] = REQUEST_XSRF_TOKEN;
-
-                const res = await fetch('/api/monitor/check', { method: 'POST', headers: headers });
-                const data = await res.json();
-                const results = data.results || {};
-
-                // Update persistent map
-                for (const [user, statusInfo] of Object.entries(results)) {
-                    accountStatusMap[user] = statusInfo;
-                }
-
-                // Re-render immediately to show new status
-                if (lastNodes.length > 0) {
-                    renderNodes(lastNodes);
-                }
-
-            } finally {
-                btn.textContent = originalText;
-                btn.disabled = false;
-            }
-        }
-
-        async function loadSettings() {
-            const res = await fetch('/api/monitor/telegram');
-            const data = await res.json();
-            document.getElementById('tgToken').value = data.telegramToken || '';
-            document.getElementById('tgChatId').value = data.telegramChatId || '';
-            document.getElementById('tgInterval').value = data.timeValue || '60';
-        }
-
-        async function saveSettings() {
-            const token = document.getElementById('tgToken').value;
-            const chatId = document.getElementById('tgChatId').value;
-            const interval = document.getElementById('tgInterval').value;
-
-            const headers = { 'Content-Type': 'application/json' };
-            if (REQUEST_XSRF_TOKEN) headers['X-XSRFToken'] = REQUEST_XSRF_TOKEN;
-
-            await fetch('/api/monitor/telegram', {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify({
-                    telegramToken: token,
-                    telegramChatId: chatId,
-                    scheduleType: 'interval',
-                    timeValue: interval
-                })
-            });
-            alert('Settings Saved!');
         }
 
         // --- Auth & Main Logic ---
@@ -538,11 +443,6 @@
                 const isAnyOnline = groupNodes.some(n => n.is_online);
                 const username = groupNodes[0].username || 'N/A';
 
-                // Get persisted status
-                const statusInfo = accountStatusMap[username] || { status: 'Unknown' };
-                const statusColor = (statusInfo.status === 'Active') ? '#28a745' :
-                    (statusInfo.status.includes('Locked') || statusInfo.status.includes('Error')) ? '#dc3545' : '#666';
-
                 let avgCpu = 0, totalRam = 0, maxDisk = 0, totalProcs = 0, onlineCount = 0;
                 groupNodes.forEach(n => {
                     if (n.is_online) {
@@ -565,9 +465,6 @@
                             <span style="font-size: 0.8em; color: ${isAnyOnline ? '#28a745' : '#dc3545'}; margin-right: 10px;">
                                 (${onlineCount}/${groupNodes.length} Online)
                             </span>
-                            <span style="font-size: 0.8em; color: #555; font-weight: normal; border-left: 1px solid #ccc; padding-left: 10px;">
-                                Status: <strong style="color: ${statusColor}">${statusInfo.status}</strong>
-                            </span>
                         </h3>
                         <div class="stats">
                             <div class="stat-item"><span>Avg CPU</span> <strong>${avgCpu.toFixed(1)}%</strong></div>
@@ -589,10 +486,8 @@
         }
 
         initAuthUI();
-        loadStatus().then(() => {
-            fetchNodes();
-            setInterval(fetchNodes, 5000);
-        });
+        fetchNodes();
+        setInterval(fetchNodes, 5000);
     </script>
 </body>
 

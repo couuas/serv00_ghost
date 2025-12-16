@@ -1,12 +1,17 @@
 name: Server Health Check
 
 on:
-  workflow_dispatch:
+  schedule:
+    - cron: '*/30 * * * *'  # Run every 30 minutes
+  workflow_dispatch:        # Allow manual trigger
 
 jobs:
   check-health:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -14,95 +19,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install paramiko
+          pip install paramiko requests
 
       - name: Check All Servers
         env:
           SERVERS_JSON: ${{ secrets.SERVERS_JSON }}
+          TELEGRAM_JSON: ${{ secrets.TELEGRAM_JSON }}
           GITHUB_STEP_SUMMARY: ${{ github.step_summary }}
-        shell: python
-        run: |
-          import json
-          import os
-          import paramiko
-          import sys
-
-          servers_json = os.environ.get("SERVERS_JSON")
-          if not servers_json:
-              print("::error::SERVERS_JSON secret is missing or empty.")
-              exit(1)
-
-          try:
-              servers = json.loads(servers_json)
-          except json.JSONDecodeError as e:
-              print(f"::error::Failed to parse SERVERS_JSON: {e}")
-              exit(1)
-
-          if not isinstance(servers, list):
-               print("::error::SERVERS_JSON must be a list of objects.")
-               exit(1)
-
-          results = []
-          success_count = 0
-
-          print(f"Starting Health Check for {len(servers)} servers...")
-
-          for server in servers:
-              host = server.get("host")
-              port = int(server.get("port", 22))
-              username = server.get("username")
-              password = server.get("password")
-              
-              print(f"Checking {username}@{host}:{port} ...")
-              
-              status = "❌ Failed"
-              details = ""
-              
-              try:
-                  client = paramiko.SSHClient()
-                  client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                  client.connect(hostname=host, port=port, username=username, password=password, timeout=10)
-                  
-                  # Run a simple echo command to verify shell access
-                  stdin, stdout, stderr = client.exec_command("echo 'OK'")
-                  exit_code = stdout.channel.recv_exit_status()
-                  
-                  if exit_code == 0:
-                      status = "✅ Online"
-                      success_count += 1
-                  else:
-                      status = "⚠️ Connected but Command Failed"
-                      details = stderr.read().decode().strip()
-                  
-                  client.close()
-              except Exception as e:
-                  details = str(e)
-              
-              results.append({
-                  "host": host,
-                  "port": port,
-                  "username": username,
-                  "status": status,
-                  "details": details
-              })
-
-          # Generate Summary Markdown
-          summary_md = "## 🏥 Server Health Report\n\n"
-          summary_md += f"**Total Servers:** {len(servers)} | **Online:** {success_count} | **Offline:** {len(servers) - success_count}\n\n"
-          summary_md += "| Host | User | Port | Status | Details |\n"
-          summary_md += "|------|------|------|--------|---------|\n"
-          
-          for r in results:
-              summary_md += f"| `{r['host']}` | `{r['username']}` | `{r['port']}` | {r['status']} | {r['details']} |\n"
-
-          # Write to Step Summary
-          summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
-          if summary_file:
-              with open(summary_file, "a", encoding="utf-8") as f:
-                  f.write(summary_md)
-          
-          print("\n--- Summary ---")
-          print(summary_md)
-          
-          if success_count != len(servers):
-              exit(1) # Fail the job if any server is down
+        run: python scripts/health_check.py
