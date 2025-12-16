@@ -295,17 +295,22 @@
         <!-- REPLACED TABS WITH SIMPLE SPACER -->
         <div style="margin-top: 20px;"></div>
 
-        <!-- AUTH REQUIRED BLOCK FOR GUEST MODE -->
+        <!-- AUTH REQUIRED BLOCK (Login Form) -->
         <div id="guestOverlay" class="node-card"
             style="border-color: var(--alert-red); flex-direction: column; text-align: center; margin-bottom: 30px; background: rgba(255, 42, 42, 0.05);">
             <h2
                 style="color: var(--alert-red); border-bottom: 1px solid var(--alert-red); padding-bottom: 10px; width: 100%; font-family: 'Orbitron', sans-serif; margin-top: 0;">
-                ACCESS REQUIRED</h2>
-            <p style="color: var(--text-main); margin: 20px 0;">SYSTEM LOCKED. AUTHENTICATION REQUIRED FOR FULL CONTROL.
-            </p>
-            <button class="login-btn" onclick="openLogin()"
-                style="border-color: var(--alert-red)!important; color: var(--alert-red)!important; max-width: 300px;">INITIALIZE
-                LOGIN SEQUENCE</button>
+                ACCESS REQUIRED
+            </h2>
+            <p style="color: var(--text-main); margin: 20px 0;">SYSTEM LOCKED. ENTER SECURITY KEY TO UNLOCK CONTROL.</p>
+            <div style="width: 100%; max-width: 400px; margin: 0 auto;">
+                <input type="password" id="passwordInput" placeholder="ENTER SECURITY KEY"
+                    style="width: 100%; margin-bottom: 15px; box-sizing: border-box; text-align: center;"
+                    onkeypress="handleEnter(event)">
+                <button class="login-btn" onclick="performLogin()"
+                    style="border-color: var(--alert-red)!important; color: var(--alert-red)!important; width: 100%;">AUTHENTICATE</button>
+            </div>
+            <p id="loginError" style="color: var(--alert-red); display: none; margin-top: 10px; font-size: 0.8em;"></p>
         </div>
 
 
@@ -322,29 +327,7 @@
         </div>
     </div>
 
-    <div id="loginModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeLogin()">&times;</span>
-            <h2>ACCESS REQUIRED</h2>
-            <input type="password" id="passwordInput" placeholder="ENTER SECURITY KEY"
-                style="width: 100%; margin: 15px 0; box-sizing: border-box;" onkeypress="handleEnter(event)">
-            <button class="login-btn" onclick="performLogin()" style="width: 100%">AUTHENTICATE</button>
-            <p id="loginError" style="color: var(--alert-red); display: none; margin-top: 10px; font-size: 0.8em;">
-            </p>
-        </div>
-    </div>
 
-    <!-- AUTH REQUIRED OVERLAY FOR GUEST MODE -->
-    <div id="guestOverlay" class="modal" style="background-color: rgba(0,0,0,0.8);">
-        <div class="modal-content" style="border-color: var(--alert-red); text-align: center; margin-top: 20vh;">
-            <h2 style="color: var(--alert-red); border-color: var(--alert-red);">ACCESS REQUIRED</h2>
-            <p style="color: var(--text-main); margin-bottom: 20px;">SYSTEM LOCKED. AUTHENTICATION REQUIRED FOR
-                CONTROL.</p>
-            <button class="login-btn" onclick="openLogin()"
-                style="border-color: var(--alert-red)!important; color: var(--alert-red)!important; width: 100%;">INITIALIZE
-                LOGIN SEQUENCE</button>
-        </div>
-    </div>
 
     <script>
         const CLUSTER_SECRET = "{{ secret }}";
