@@ -783,11 +783,26 @@
                         ${appListHtml}
                     </div>
                     <div class="actions" style="display:flex; flex-direction:column; gap:8px;">
-                        ${IS_AUTHED ? groupNodes.map(n => `
-                            <a href="#" onclick="connect('${n.url}')">
-                                [ CONNECT_UNIT: ${n.is_online ? 'READY' : 'LOST'} ]
-                            </a>
-                        `).join('') : '<span style="color:var(--text-dim); font-size:0.8em; font-style:italic;">[ GUEST MODE // READ ONLY ]</span>'}
+                        ${groupNodes.map(n => {
+                    const sshUrl = n.url || '#';
+                    const connectCmnd = `ssh ${n.username}@${n.name}`;
+
+                    return `
+                                <div style="display: flex; gap: 5px; width: 100%;">
+                                    <a href="${sshUrl}" target="_blank" title="Open WebSSH" style="flex: 1; text-align: center;">
+                                        >_ TERM
+                                    </a>
+                                    <button id="btn-refresh-${n.node_id}" onclick="refreshApps('${n.node_id}')" title="Refresh Apps" style="width: 40px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                                        ↻
+                                    </button>
+                                </div>
+                                ${n.username && n.username !== 'unknown' ? `
+                                    <button onclick="navigator.clipboard.writeText('${connectCmnd}'); alert('Copied: ${connectCmnd}')" title="Copy SSH Command">
+                                        COPY SSH
+                                    </button>
+                                ` : ''}
+                            `;
+                }).join('')}
                     </div>
                 `;
                 container.appendChild(div);
