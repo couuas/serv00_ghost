@@ -52,6 +52,13 @@ def make_handlers(loop, options):
 
             handlers.append((r'/webssh/ws', WsockHandler, dict(loop=loop)))
         
+        
+    # LOG REGISTERED ROUTES
+    logging.info("=== REGISTERED ROUTES ===")
+    for h in handlers:
+        logging.info(f"Route: {h[0]}")
+    logging.info("=========================")
+
     return handlers
 
 

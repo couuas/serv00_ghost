@@ -535,6 +535,9 @@ class MasterAppsProxyHandler(BaseAuthHandler):
     async def post(self):
         if not self.check_auth():
             self.set_status(403); return
+            
+    def get(self):
+        self.write({"status": "proxy_active", "mode": "master"})
 
         try:
             import platform
@@ -555,6 +558,8 @@ class MasterAppsProxyHandler(BaseAuthHandler):
                  # Assuming all nodes register via heartbeat including Master-Local.
                  pass
             
+            node_info = node_manager.nodes.get(node_id)
+
             if not node_info:
                 self.set_status(404)
                 self.write({'error': 'Node not found or offline'})
