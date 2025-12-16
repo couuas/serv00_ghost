@@ -11,7 +11,7 @@ from webssh.settings import (
 )
 
 
-from webssh.cluster import MasterHandler, SlaveWorker, DashboardHandler, NodeListHandler, LoginHandler, NodeControlHandler, LogCallbackHandler, LogViewHandler, AppListCallbackHandler
+from webssh.cluster import MasterHandler, SlaveWorker, DashboardHandler, NodeListHandler, LoginHandler, NodeControlHandler, LogCallbackHandler, LogViewHandler, AppListCallbackHandler, SlavePM2APIHandler, MasterAppsProxyHandler, AppsPageHandler
 
 
 def make_handlers(loop, options):
@@ -36,6 +36,9 @@ def make_handlers(loop, options):
             (r'/api/control', NodeControlHandler),
             (r'/api/callback/logs', LogCallbackHandler),
             (r'/api/callback/apps', AppListCallbackHandler),
+            (r'/api/slave/pm2', SlavePM2APIHandler),      # Runs on Slave
+            (r'/api/proxy/apps', MasterAppsProxyHandler), # Runs on Master
+            (r'/apps/([^/]+)', AppsPageHandler),          # Frontend Page
             (r'/api/logs', LogViewHandler),
             (r'/api/heartbeat', MasterHandler)
         ]

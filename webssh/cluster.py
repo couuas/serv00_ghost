@@ -453,6 +453,156 @@ class AppListCallbackHandler(MasterHandler):
         except:
             self.set_status(400)
 
+class SlavePM2APIHandler(MasterHandler):
+    """
+    RUNS ON SLAVE: Exposes PM2 functionality via HTTP API.
+    Protected by X-Cluster-Secret checks (inherited from MasterHandler check_permission).
+    """
+    async def post(self):
+        # MasterHandler check_permission checks X-Cluster-Secret matches settings.secret
+        if not self.check_permission():
+            self.set_status(403)
+            return
+
+        try:
+            data = json.loads(self.request.body)
+            action = data.get('action') # list, start, stop, restart, logs, delete
+            pm_id = data.get('pm_id')
+
+            if action == 'list':
+                cmd = 'npx -y pm2 jlist'
+                proc = await asyncio.create_subprocess_shell(
+                    cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+                )
+                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=10.0)
+                if proc.returncode == 0:
+                    raw_data = json.loads(stdout.decode())
+                    apps = []
+                    for p in raw_data:
+                        apps.append({
+                            'id': p.get('pm_id'),
+                            'name': p.get('name'),
+                            'mode': p.get('pm2_env', {}).get('exec_mode'),
+                            'pid': p.get('pid'),
+                            'status': p.get('pm2_env', {}).get('status'),
+                            'memory': p.get('monit', {}).get('memory', 0),
+                            'cpu': p.get('monit', {}).get('cpu', 0),
+                            'uptime': p.get('pm2_env', {}).get('pm_uptime', 0)
+                        })
+                    self.write({'success': True, 'data': apps})
+                else:
+                    self.write({'success': False, 'error': stderr.decode()})
+            
+            elif action == 'logs':
+                cmd = f'npx -y pm2 logs {pm_id} --lines 100 --nostream'
+                proc = await asyncio.create_subprocess_shell(
+                    cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+                )
+                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=10.0)
+                if proc.returncode == 0:
+                    self.write({'success': True, 'logs': stdout.decode()})
+                else:
+                    self.write({'success': False, 'error': stderr.decode()})
+
+            elif action in ['start', 'stop', 'restart', 'delete']:
+                cmd = f'npx -y pm2 {action} {pm_id}'
+                proc = await asyncio.create_subprocess_shell(
+                    cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+                )
+                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30.0)
+                if proc.returncode == 0:
+                     self.write({'success': True, 'message': f'{action} successful'})
+                else:
+                     self.write({'success': False, 'error': stderr.decode()})
+            
+            else:
+                self.set_status(400)
+                self.write({'success': False, 'error': 'Invalid action'})
+
+        except Exception as e:
+            logging.error(f"Slave API Error: {e}")
+            self.set_status(500)
+            self.write({'success': False, 'error': str(e)})
+
+
+class MasterAppsProxyHandler(BaseAuthHandler):
+    """
+    RUNS ON MASTER: Proxies requests from Apps UI to the target Slave API.
+    """
+    async def post(self):
+        if not self.check_auth():
+            self.set_status(403); return
+
+        try:
+            import platform
+            import tornado.httpclient
+            from urllib.parse import urlparse
+            body = json.loads(self.request.body)
+            node_id = body.get('node_id')
+            
+            # Lookup Node URL
+            # We iterate node_manager.nodes to find matching ID
+            target_url = None
+            if node_id == 'local' or node_id == platform.node():
+                 # Handle Master Local Case? 
+                 # If Master itself runs SlaveWorker logic, it has a separate port? 
+                 # Or we execute locally?
+                 # For simplicity, if architecture is Master -> Slave (HTTP), 
+                 # Master should also run the SlavePM2APILogic if it wants to be managed.
+                 # Assuming all nodes register via heartbeat including Master-Local.
+                 pass
+            
+            node_info = node_manager.nodes.get(node_id)
+            if not node_info:
+                self.set_status(404)
+                self.write({'error': 'Node not found or offline'})
+                return
+
+            target_url = node_info.get('url') # e.g. http://slave:8888
+            
+            # Construct Slave API URL
+            # target_url usually comes from heartbeat external_url or constructed.
+            # It might contain query params (ssh credentials). We need base.
+            parsed = urlparse(target_url)
+            # Reconstruct clean base URL
+            clean_url = f"{parsed.scheme}://{parsed.netloc}"
+            
+            api_url = f"{clean_url}/api/slave/pm2"
+            
+            # Forward Request
+            http_client = tornado.httpclient.AsyncHTTPClient()
+            headers = {'Content-Type': 'application/json'}
+            if options.secret:
+                headers['X-Cluster-Secret'] = options.secret
+                
+            response = await http_client.fetch(
+                api_url, 
+                method='POST', 
+                body=json.dumps(body), 
+                headers=headers,
+                request_timeout=35.0 # Slightly larger than Slave timeout
+            )
+            
+            # Relay Response
+            self.set_status(response.code)
+            self.write(response.body)
+
+        except tornado.httpclient.HTTPError as e:
+             self.set_status(e.code)
+             if e.response: self.write(e.response.body)
+             else: self.write({'error': str(e)})
+        except Exception as e:
+            logging.error(f"Proxy Error: {e}")
+            self.set_status(500)
+            self.write({'error': str(e)})
+
+class AppsPageHandler(BaseAuthHandler):
+    def get(self, node_id):
+        if not self.check_auth():
+            self.redirect('/')
+            return
+        self.render('apps.html', node_id=node_id)
+
 class LogViewHandler(BaseAuthHandler):
     """Frontend gets logs here."""
     def get(self):

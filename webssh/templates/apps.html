@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>App Manager // {{ node_id }}</title>
+    <link href="/static/img/favicon-32.png" rel="icon" type="image/png">
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;700;900&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #050510;
+            --panel-bg: rgba(20, 20, 30, 0.95);
+            --primary-cyan: #00f3ff;
+            --alert-red: #ff2a2a;
+            --neon-green: #00ff41;
+            --text-main: #e0e0e0;
+            --text-dim: #8892b0;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background-image:
+                linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+
+        /* Header */
+        header {
+            height: 60px;
+            background: rgba(0, 0, 0, 0.8);
+            border-bottom: 1px solid var(--primary-cyan);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            justify-content: space-between;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--primary-cyan);
+            font-size: 1.2rem;
+            margin: 0;
+            letter-spacing: 2px;
+        }
+
+        .node-badge {
+            background: rgba(0, 243, 255, 0.1);
+            padding: 5px 10px;
+            border: 1px solid var(--primary-cyan);
+            font-size: 0.9rem;
+            margin-left: 15px;
+        }
+
+        /* Main Layout */
+        main {
+            flex: 1;
+            display: flex;
+            padding: 20px;
+            gap: 20px;
+            overflow: hidden;
+        }
+
+        /* Left: Process List */
+        .process-panel {
+            flex: 2;
+            background: var(--panel-bg);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            padding: 15px;
+            border-bottom: 1px solid rgba(0, 243, 255, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-title {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--text-dim);
+        }
+
+        .table-container {
+            flex: 1;
+            overflow: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th {
+            text-align: left;
+            padding: 10px 15px;
+            color: var(--text-dim);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: sticky;
+            top: 0;
+            background: #111;
+        }
+
+        td {
+            padding: 10px 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        tr:hover {
+            background: rgba(0, 243, 255, 0.05);
+        }
+
+        .status-online {
+            color: var(--neon-green);
+            text-shadow: 0 0 5px var(--neon-green);
+        }
+
+        .status-stopped {
+            color: var(--alert-red);
+        }
+
+        .status-errored {
+            color: #ff00ea;
+        }
+
+        /* Actions */
+        .btn {
+            background: transparent;
+            border: 1px solid var(--text-dim);
+            color: var(--text-dim);
+            padding: 5px 10px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+            font-size: 0.8rem;
+        }
+
+        .btn:hover:not(:disabled) {
+            border-color: var(--primary-cyan);
+            color: var(--primary-cyan);
+            box-shadow: 0 0 8px var(--primary-cyan);
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            border-color: var(--alert-red);
+            color: var(--alert-red);
+            box-shadow: 0 0 8px var(--alert-red);
+        }
+
+        .btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* Right: Logs */
+        .logs-panel {
+            flex: 1;
+            background: #000;
+            border: 1px solid var(--text-dim);
+            display: flex;
+            flex-direction: column;
+            min-width: 400px;
+        }
+
+        .logs-content {
+            flex: 1;
+            overflow: auto;
+            padding: 15px;
+            font-size: 0.85rem;
+            color: #ccc;
+            white-space: pre-wrap;
+            line-height: 1.4;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #000;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border: 1px solid #555;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-cyan);
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div style="display:flex; align-items:center;">
+            <h1 onclick="window.location.href='/'" style="cursor:pointer;">&lt; BACK</h1>
+            <span class="node-badge">{{ node_id }}</span>
+        </div>
+        <div style="font-size:0.8rem; color:var(--text-dim);">
+            STATUS: <span id="conn-status" style="color:var(--text-dim)">CONNECTING...</span>
+        </div>
+    </header>
+
+    <main>
+        <!-- Left: Process List -->
+        <div class="process-panel">
+            <div class="panel-header">
+                <span class="panel-title">// PM2_PROCESS_LIST</span>
+                <button class="btn" onclick="fetchApps()">↻ REFRESH</button>
+            </div>
+            <div class="table-container">
+                <table id="app-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>NAME</th>
+                            <th>MODE</th>
+                            <th>PID</th>
+                            <th>UPTIME</th>
+                            <th>CPU</th>
+                            <th>MEM</th>
+                            <th>STATUS</th>
+                            <th>ACTIONS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="app-body">
+                        <!-- JS Injected -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Right: Logs -->
+        <div class="logs-panel">
+            <div class="panel-header" style="background:#111; border-bottom:1px solid #333;">
+                <span class="panel-title" id="logs-title">// LOGS: SELECT_APP</span>
+                <button class="btn" onclick="clearLogs()">CLEAR</button>
+            </div>
+            <div class="logs-content" id="logs-display">
+                Select an app to view logs...
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const NODE_ID = "{{ node_id }}";
+        const API_BASE = "/api/proxy/apps";
+        let selectedPmId = null;
+        let autoRefreshTimer = null;
+
+        // Formatting utilities
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function formatUptime(uptime) {
+            if (!uptime) return '-';
+            const now = Date.now();
+            const diff = now - uptime; // pm_uptime is usually timestamp ms
+            const seconds = Math.floor(diff / 1000);
+            if (seconds < 60) return seconds + 's';
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return minutes + 'm';
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return hours + 'h';
+            return Math.floor(hours / 24) + 'd';
+        }
+
+        // API Calls
+        async function apiCall(action, pmId = null) {
+            try {
+                const body = { node_id: NODE_ID, action: action };
+                if (pmId !== null) body.pm_id = pmId;
+
+                const res = await fetch(API_BASE, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+
+                if (res.status !== 200) throw new Error(data.error || 'Request failed');
+                return data;
+            } catch (e) {
+                console.error(e);
+                document.getElementById('conn-status').innerText = 'ERROR';
+                document.getElementById('conn-status').style.color = 'var(--alert-red)';
+                alert("API Error: " + e.message);
+                return null;
+            }
+        }
+
+        async function fetchApps() {
+            document.getElementById('conn-status').innerText = 'SYNCING...';
+            const data = await apiCall('list');
+            if (data && data.success) {
+                renderTable(data.data);
+                document.getElementById('conn-status').innerText = 'ONLINE';
+                document.getElementById('conn-status').style.color = 'var(--neon-green)';
+            }
+        }
+
+        async function controlApp(action, pmId) {
+            if (!confirm(`Are you sure you want to ${action.toUpperCase()} app #${pmId}?`)) return;
+
+            const data = await apiCall(action, pmId);
+            if (data && data.success) {
+                fetchApps(); // Refresh list
+            }
+        }
+
+        async function fetchLogs(pmId, appName) {
+            selectedPmId = pmId;
+            document.getElementById('logs-title').innerText = `// LOGS: ${appName} [ID:${pmId}]`;
+            document.getElementById('logs-display').innerText = 'Fetching logs...';
+
+            const data = await apiCall('logs', pmId);
+            if (data && data.success) {
+                document.getElementById('logs-display').innerText = data.logs;
+                // Scroll to bottom
+                const el = document.getElementById('logs-display');
+                el.scrollTop = el.scrollHeight;
+            }
+        }
+
+        function clearLogs() {
+            document.getElementById('logs-display').innerText = '';
+        }
+
+        function renderTable(apps) {
+            const tbody = document.getElementById('app-body');
+            tbody.innerHTML = '';
+
+            if (!apps || apps.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px;">No PM2 processes found.</td></tr>';
+                return;
+            }
+
+            apps.forEach(app => {
+                const tr = document.createElement('tr');
+                const isOnline = app.status === 'online';
+                const statusClass = isOnline ? 'status-online' : (app.status === 'stopped' ? 'status-stopped' : 'status-errored');
+
+                tr.innerHTML = `
+                <td style="color:var(--primary-cyan)">${app.id}</td>
+                <td style="font-weight:bold">${app.name}</td>
+                <td style="color:var(--text-dim)">${app.mode || 'fork'}</td>
+                <td>${app.pid || '-'}</td>
+                <td>${formatUptime(app.uptime)}</td>
+                <td>${app.cpu}%</td>
+                <td>${formatBytes(app.memory)}</td>
+                <td class="${statusClass}" style="font-weight:bold">${app.status.toUpperCase()}</td>
+                <td>
+                    <div style="display:flex; gap:5px;">
+                        ${isOnline ?
+                        `<button class="btn" onclick="controlApp('restart', ${app.id})">RESTART</button>
+                             <button class="btn btn-danger" onclick="controlApp('stop', ${app.id})">STOP</button>` :
+                        `<button class="btn" onclick="controlApp('start', ${app.id})">START</button>`
+                    }
+                        <button class="btn" onclick="fetchLogs(${app.id}, '${app.name}')">LOGS</button>
+                    </div>
+                </td>
+            `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Init
+        fetchApps();
+        // Auto refresh every 5s
+        setInterval(fetchApps, 5000);
+
+    </script>
+</body>
+
+</html>
