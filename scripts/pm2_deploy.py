@@ -45,7 +45,7 @@ def main():
                 "if [ -f .pm2_app_name ]; then "
                 "  APP_NAME=$(cat .pm2_app_name); "
                 "  echo 'Restarting PM2 app: '$APP_NAME; "
-                "  npx pm2 restart $APP_NAME; "
+                "  npx -y pm2 restart $APP_NAME; "
                 "else "
                 "  echo 'No .pm2_app_name found, skipping restart'; "
                 "fi"

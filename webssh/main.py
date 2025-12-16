@@ -31,8 +31,6 @@ def make_handlers(loop, options):
             (r'/', DashboardHandler),
             (r'/api/login', LoginHandler),
             (r'/api/nodes', NodeListHandler),
-            (r'/api/nodes', NodeListHandler),
-            (r'/api/control', NodeControlHandler),
             (r'/api/control', NodeControlHandler),
             (r'/api/callback/logs', LogCallbackHandler),
             (r'/api/callback/apps', AppListCallbackHandler),

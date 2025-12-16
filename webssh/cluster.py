@@ -555,20 +555,19 @@ class MasterAppsProxyHandler(BaseAuthHandler):
                  # Assuming all nodes register via heartbeat including Master-Local.
                  pass
             
-            node_info = node_manager.nodes.get(node_id)
             if not node_info:
                 self.set_status(404)
                 self.write({'error': 'Node not found or offline'})
                 return
 
-            target_url = node_info.get('url') # e.g. http://slave:8888
+            target_url = node_info.get('url') # e.g. http://slave:8888?query=...
             
             # Construct Slave API URL
             # target_url usually comes from heartbeat external_url or constructed.
             # It might contain query params (ssh credentials). We need base.
             parsed = urlparse(target_url)
-            # Reconstruct clean base URL
-            clean_url = f"{parsed.scheme}://{parsed.netloc}"
+            # Reconstruct clean base URL without query strings
+            clean_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path.rstrip('/')}"
             
             api_url = f"{clean_url}/api/slave/pm2"
             
@@ -583,12 +582,25 @@ class MasterAppsProxyHandler(BaseAuthHandler):
                 method='POST', 
                 body=json.dumps(body), 
                 headers=headers,
-                request_timeout=35.0 # Slightly larger than Slave timeout
+                request_timeout=35.0,
+                raise_error=False # Don't raise exception on 4xx/5xx, handle manually
             )
             
             # Relay Response
             self.set_status(response.code)
-            self.write(response.body)
+            # Check if response is JSON
+            try:
+                json_body = json.loads(response.body)
+                self.write(json_body)
+            except:
+                # If HTML or text, wrap in JSON error to prevent frontend crash
+                logging.error(f"Proxy received non-JSON from Slave ({api_url}): {response.body[:100]}")
+                self.write({'error': f'Slave Error ({response.code}): {response.body.decode()[:200]}'})
+
+        except Exception as e:
+            logging.error(f"Proxy Error: {e}")
+            self.set_status(500)
+            self.write({'error': str(e)})
 
         except tornado.httpclient.HTTPError as e:
              self.set_status(e.code)

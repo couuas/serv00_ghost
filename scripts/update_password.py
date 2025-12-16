@@ -93,7 +93,7 @@ def update_master_password(server, new_password):
         
         # Step 1: Get PM2 process list
         print("  → Fetching PM2 processes...")
-        exit_code, stdout, stderr = execute_ssh_command(client, f"{cd_prefix}npx pm2 jlist")
+        exit_code, stdout, stderr = execute_ssh_command(client, f"{cd_prefix}npx -y pm2 jlist")
         
         if exit_code != 0:
             print(f"  ✗ Failed to get PM2 list: {stderr}")
@@ -166,12 +166,12 @@ def update_master_password(server, new_password):
         print(f"  → Restarting process...")
         
         # Delete old process
-        exit_code, stdout, stderr = execute_ssh_command(client, f"{cd_prefix}npx pm2 delete {process_name}")
+        exit_code, stdout, stderr = execute_ssh_command(client, f"{cd_prefix}npx -y pm2 delete {process_name}")
         if exit_code != 0:
             print(f"  ⚠ Warning during delete: {stderr}")
         
         # Start with new args
-        start_cmd = f'{cd_prefix}npx pm2 start {script} --name "{process_name}" --interpreter {interpreter} -- {new_args_str}'
+        start_cmd = f'{cd_prefix}npx -y pm2 start {script} --name "{process_name}" --interpreter {interpreter} -- {new_args_str}'
         exit_code, stdout, stderr = execute_ssh_command(client, start_cmd, timeout=20)
         
         if exit_code != 0:
@@ -180,7 +180,7 @@ def update_master_password(server, new_password):
             return False
         
         # Save PM2 state
-        execute_ssh_command(client, f"{cd_prefix}npx pm2 save")
+        execute_ssh_command(client, f"{cd_prefix}npx pm2 -y save")
         
         print(f"  ✓ Successfully updated master password")
         client.close()
