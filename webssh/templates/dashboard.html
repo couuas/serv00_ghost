@@ -539,6 +539,30 @@
             }
         }
 
+        async function refreshApps(nodeId) {
+            try {
+                const res = await fetch('/api/control', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-XSRFToken': REQUEST_XSRF_TOKEN },
+                    body: JSON.stringify({ node_id: nodeId, action: 'list_apps' })
+                });
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    // formatted toast or alert
+                    const btn = document.getElementById('btn-refresh-' + nodeId);
+                    if (btn) {
+                        const originalText = btn.innerText;
+                        btn.innerText = 'REQ...';
+                        setTimeout(() => btn.innerText = originalText, 2000);
+                    }
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (e) {
+                alert('Comm Error: ' + e);
+            }
+        }
+
         async function viewLogs(nodeId, pmId) {
             // 1. Send Request
             const req = await fetch('/api/control', {
@@ -675,7 +699,8 @@
 
                 let avgCpu = 0, totalRam = 0, maxDisk = 0, totalProcs = 0, onlineCount = 0;
                 groupNodes.forEach(n => {
-                    if (n.is_online) {
+                    // Trust stats if they exist, regardless of strict time-sync online check
+                    if (n.stats) {
                         avgCpu += parseFloat(n.stats.cpu || 0);
                         totalRam += parseFloat(n.stats.ram_usage || 0);
                         maxDisk = Math.max(maxDisk, parseFloat(n.stats.disk_usage || 0));

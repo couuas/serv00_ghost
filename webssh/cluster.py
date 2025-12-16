@@ -53,9 +53,13 @@ class NodeManager:
         # Merge static node list (if any), active nodes from heartbeat, and apps
         # For now simpler approach: return self.nodes, injected with apps
         nodes_list = []
+        now = time.time()
         for node_id, info in self.nodes.items():
             # Inject apps if available
             info['stats']['pm2'] = self.node_apps.get(node_id, [])
+            # Server-side online check (30s threshold)
+            # info['last_seen'] is set by Master on receipt
+            info['is_online'] = (now - info.get('last_seen', 0)) < 30
             nodes_list.append(info)
         return nodes_list
     
