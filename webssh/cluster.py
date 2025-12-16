@@ -46,6 +46,16 @@ class NodeManager:
     def __init__(self):
         self.nodes = {} 
         self.command_queue = {} # {node_id: [list_of_commands]}
+        self.log_buffer = {} # {node_id_pm_id: "log content"}
+
+    def get_logs(self, node_id, pm_id):
+        key = f"{node_id}_{pm_id}"
+        return self.log_buffer.get(key)
+    
+    def save_logs(self, node_id, pm_id, content):
+        key = f"{node_id}_{pm_id}"
+        self.log_buffer[key] = content
+        # Auto-expire logs could be added here, for now simple overwrite
 
     def queue_command(self, node_id, command):
         if node_id not in self.command_queue:
@@ -249,10 +259,28 @@ class SlaveWorker:
 
     async def execute_remote_command(self, cmd_data):
         """Execute command received from Master"""
-        action = cmd_data.get('action') # start, stop, restart, delete
+        action = cmd_data.get('action') # start, stop, restart, delete, logs
         pm_id = cmd_data.get('pm_id')
         
-        if action in ['start', 'stop', 'restart', 'delete'] and pm_id is not None:
+        if action == 'logs':
+             logging.info(f"Fetching logs for {pm_id}")
+             try:
+                 # Fetch headers/tails of logs
+                 cmd = f'npx -y pm2 logs {pm_id} --lines 50 --nostream'
+                 proc = await asyncio.create_subprocess_shell(
+                    cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                 )
+                 stdout, stderr = await proc.communicate()
+                 
+                 # Send back to Master
+                 log_content = stdout.decode('utf-8') + stderr.decode('utf-8')
+                 await self.report_logs(pm_id, log_content)
+             except Exception as e:
+                 logging.error(f"Error fetching logs: {e}")
+
+        elif action in ['start', 'stop', 'restart', 'delete'] and pm_id is not None:
             logging.info(f"Executing remote command: {action} {pm_id}")
             cmd = f'npx -y pm2 {action} {pm_id}'
             try:
@@ -264,6 +292,21 @@ class SlaveWorker:
                 await proc.communicate()
             except Exception as e:
                 logging.error(f"Error executing {cmd}: {e}")
+
+    async def report_logs(self, pm_id, content):
+        url = self.master_url.replace('/heartbeat', '/callback/logs')
+        data = {
+            'node_id': self.node_id,
+            'pm_id': pm_id,
+            'content': content
+        }
+        headers = {'Content-Type': 'application/json'}
+        if self.secret:
+             headers['X-Cluster-Secret'] = self.secret
+        try:
+             await self.http_client.fetch(url, method='POST', body=json.dumps(data), headers=headers)
+        except Exception as e:
+             logging.error(f"Failed to upload logs: {e}")
 
     def start(self):
         logging.info(f"Starting SlaveWorker connecting to {self.master_url}")
@@ -357,3 +400,24 @@ class NodeControlHandler(BaseAuthHandler):
         except Exception as e:
             self.set_status(400)
             self.write({'error': str(e)})
+
+class LogCallbackHandler(MasterHandler):
+    """Slave posts logs here."""
+    def post(self):
+        if not self.check_permission():
+            self.set_status(403); return
+        try:
+            data = json.loads(self.request.body)
+            node_manager.save_logs(data.get('node_id'), data.get('pm_id'), data.get('content'))
+            self.write({"status": "ok"})
+        except:
+            self.set_status(400)
+
+class LogViewHandler(BaseAuthHandler):
+    """Frontend gets logs here."""
+    def get(self):
+        if not self.check_auth(): self.set_status(403); return
+        node_id = self.get_argument('node_id')
+        pm_id = self.get_argument('pm_id')
+        logs = node_manager.get_logs(node_id, pm_id)
+        self.write({"logs": logs if logs else "WAITING_FOR_DATA..."})

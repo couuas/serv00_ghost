@@ -285,6 +285,18 @@
             }
         }
     </style>
+    <!-- Logs Modal -->
+    <div id="logsModal" class="modal">
+        <div class="modal-content"
+            style="width: 80%; max-width: 800px; height: 80vh; display: flex; flex-direction: column;">
+            <div class="modal-header">
+                <h2>// PROCESS_LOGS</h2>
+                <span class="close" onclick="closeLogs()">&times;</span>
+            </div>
+            <pre id="logsContent"
+                style="flex: 1; overflow: auto; background: #000; padding: 10px; color: #ccc; font-family: monospace; white-space: pre-wrap; margin-top: 10px;"></pre>
+        </div>
+    </div>
 </head>
 
 <body>
@@ -388,7 +400,7 @@
                 }
                 // Only show overlay if we want to force login, user said "remove login button" implies 
                 // maybe they want it always visible or moved. 
-                // Request: "remove LOGIN_SYSTEM button, move ACCESS REQUIRED to top"
+                // Request: "remove LOGIN_SYSTEM button, move ACCESS REQUIRED to top".
                 // Let's hide the overlay by default and only show login modal when triggered? 
                 // Actually user said "move ACCESS REQUIRED to top". 
                 // Maybe they mean the login modal itself?
@@ -474,6 +486,48 @@
             } catch (e) {
                 console.error(e);
             }
+        }
+
+        async function viewLogs(nodeId, pmId) {
+            // 1. Send Request
+            const req = await fetch('/api/control', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-XSRFToken': REQUEST_XSRF_TOKEN },
+                body: JSON.stringify({ node_id: nodeId, action: 'logs', pm_id: pmId })
+            });
+
+            // 2. Show Modal
+            const modal = document.getElementById('logsModal');
+            const content = document.getElementById('logsContent');
+            modal.style.display = 'block';
+            content.innerText = 'Requesting logs from slave...';
+
+            // 3. Poll for result
+            let attempts = 0;
+            const poll = setInterval(async () => {
+                attempts++;
+                try {
+                    const res = await fetch(`/api/logs?node_id=${nodeId}&pm_id=${pmId}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.logs && data.logs !== "WAITING_FOR_DATA...") {
+                            content.innerText = data.logs;
+                            clearInterval(poll);
+                        }
+                    }
+                } catch (e) { }
+
+                if (attempts > 10) {
+                    clearInterval(poll);
+                    if (content.innerText === 'Requesting logs from slave...') {
+                        content.innerText = 'Timeout waiting for logs. (Slave might be offline or busy)';
+                    }
+                }
+            }, 1000);
+        }
+
+        function closeLogs() {
+            document.getElementById('logsModal').style.display = 'none';
         }
 
         async function controlApp(nodeId, action, pmId) {
@@ -617,7 +671,11 @@
                                                     style="background: transparent; border: 1px solid var(--alert-red); color: var(--alert-red); padding: 2px 5px; cursor: pointer; font-family: inherit; font-size: 0.8em;">
                                                     ■
                                                  </button>
-                                             </div>
+                                                 <button onclick="viewLogs('${app.nodeId}', ${app.id})" 
+                                                    style="background: transparent; border: 1px solid var(--neon-green); color: var(--neon-green); padding: 2px 5px; cursor: pointer; font-family: inherit; font-size: 0.8em;" title="View Logs">
+                                                    📄
+                                                 </button>
+                                              </div>
                                              ` : ''}
                                          </div>
                                      `).join('')}
