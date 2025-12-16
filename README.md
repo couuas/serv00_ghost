@@ -130,9 +130,9 @@ This roadmap outlines the next phase of evolution for the WebSSH Cluster, transf
 ###  Phase 1: Application Manager (PM2 GUI)
 *Goal: Visualize and manage running applications on all nodes.*
 
-- [ ] **Process List**: Extend the Dashboard to show not just system stats, but a list of running PM2 processes on each node.
-- [ ] **Process Control**: Add buttons to `Start`, `Stop`, `Restart`, and `Delete` processes directly from the UI.
-- [ ] **Logs Viewer**: Ability to stream or fetch `pm2 logs` for a specific process via WebSocket.
+- [x] **Process List**: Dedicated "Apps Manager" page for each node showing PM2 process status, CPU, RAM, and Uptime.
+- [x] **Process Control**: Real-time `Start`, `Stop`, `Restart`, and `Delete` controls via Cyberpunk UI.
+- [x] **Logs Viewer**: Built-in logs panel to view output for any selected application.
 
 ###  Phase 2: GitHub One-Click Deploy
 *Goal: Deploy a repo from GitHub to a specific node with zero terminal interaction.*
