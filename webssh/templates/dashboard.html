@@ -378,8 +378,7 @@
             // Style overridden by CSS via class logic below, simplified HTML here
             if (IS_AUTHED) {
                 container.innerHTML = `
-                    <button onclick="connect('/webssh')" class="login-btn" style="border-color: var(--neon-green)!important; color: var(--neon-green)!important; margin-right: 15px;">> LAUNCH_WEBSSH</button>
-                    <span style="color: var(--neon-green)">[ ACCESS GRANTED ]</span>
+                    <span style="color: var(--neon-green)" onclick="connect('/webssh')">[ ACCESS GRANTED ]</span>
                 `;
                 document.getElementById('guestOverlay').style.display = 'none';
             } else {
