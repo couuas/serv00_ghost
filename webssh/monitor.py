@@ -156,5 +156,28 @@ class Scheduler:
             
             await self.bot_class.send_message(token, chat_id, "\n".join(msg_lines))
 
+class StatusPersistence:
+    def __init__(self, filename="account_status.json"):
+        self.filename = filename
+
+    def save_status(self, data):
+        try:
+            with open(self.filename, 'w') as f:
+                json.dump(data, f, indent=2)
+            logging.info(f"Saved account status to {self.filename}")
+        except Exception as e:
+            logging.error(f"Failed to save account status: {e}")
+
+    def load_status(self):
+        if not os.path.exists(self.filename):
+            return {}
+        try:
+            with open(self.filename, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            logging.error(f"Failed to load account status: {e}")
+            return {}
+
 monitor_manager = AccountManager()
 monitor_scheduler = Scheduler(monitor_manager, StatusChecker, TelegramBot)
+status_persistence = StatusPersistence()

@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>WebSSH Cluster Manager</title>
+    <link href="static/img/favicon-32.png" rel="icon" type="image/png">
     <style>
         body {
             font-family: sans-serif;
@@ -299,6 +300,15 @@
         let accountStatusMap = {}; // specific persistence
         let lastNodes = []; // store for re-rendering
 
+        function connect(url) {
+            let targetUrl = url;
+            if (CLUSTER_SECRET) {
+                targetUrl += (targetUrl.includes('?') ? '&' : '?') + 'secret=' + encodeURIComponent(CLUSTER_SECRET);
+            }
+            window.open(targetUrl, '_blank');
+        }
+
+
         // --- Tab Logic ---
         async function switchTab(tab, event) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -556,7 +566,7 @@
                                 (${onlineCount}/${groupNodes.length} Online)
                             </span>
                             <span style="font-size: 0.8em; color: #555; font-weight: normal; border-left: 1px solid #ccc; padding-left: 10px;">
-                                User: <strong>${username}</strong> | Status: <strong style="color: ${statusColor}">${statusInfo.status}</strong>
+                                Status: <strong style="color: ${statusColor}">${statusInfo.status}</strong>
                             </span>
                         </h3>
                         <div class="stats">
@@ -579,8 +589,10 @@
         }
 
         initAuthUI();
-        setInterval(fetchNodes, 5000);
-        fetchNodes();
+        loadStatus().then(() => {
+            fetchNodes();
+            setInterval(fetchNodes, 5000);
+        });
     </script>
 </body>
 

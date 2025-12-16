@@ -44,7 +44,7 @@ def make_handlers(loop, options):
             handlers.append((r'/webssh/ws', WsockHandler, dict(loop=loop)))
 
         # Monitor API Handlers
-        from webssh.monitor import monitor_manager, StatusChecker, TelegramBot, monitor_scheduler
+        from webssh.monitor import monitor_manager, StatusChecker, TelegramBot, monitor_scheduler, status_persistence
         
         # Start the scheduler immediately
         monitor_scheduler.start()
@@ -60,7 +60,14 @@ def make_handlers(loop, options):
                 for user in accounts:
                     status = await StatusChecker.check_account(user)
                     results[user] = {"status": status, "season": accounts[user].get('season', '')}
+                
+                # Persist results
+                status_persistence.save_status(results)
                 self.write({"results": results})
+
+        class MonitorStatusHandler(tornado.web.RequestHandler):
+            def get(self):
+                self.write(status_persistence.load_status())
 
         class MonitorTelegramHandler(tornado.web.RequestHandler):
             def get(self):
@@ -75,6 +82,7 @@ def make_handlers(loop, options):
         handlers.extend([
             (r'/api/monitor/accounts', MonitorAccountsHandler),
             (r'/api/monitor/check', MonitorCheckHandler),
+            (r'/api/monitor/status', MonitorStatusHandler),
             (r'/api/monitor/telegram', MonitorTelegramHandler)
         ])
         
