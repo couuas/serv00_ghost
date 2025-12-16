@@ -586,7 +586,9 @@
                     let apps = [];
                     groupNodes.forEach(n => {
                         if (n.stats && n.stats.pm2 && n.stats.pm2.length > 0) {
-                            apps = apps.concat(n.stats.pm2);
+                            // Inject node_id into app object for control context
+                            const nodeApps = n.stats.pm2.map(app => ({ ...app, nodeId: n.node_id }));
+                            apps = apps.concat(nodeApps);
                         }
                     });
 
@@ -607,11 +609,11 @@
                                              
                                              ${IS_AUTHED ? `
                                              <div style="display: flex; gap: 5px;">
-                                                 <button onclick="controlApp('${n.node_id}', '${app.status === 'online' ? 'restart' : 'start'}', ${app.id})" 
+                                                 <button onclick="controlApp('${app.nodeId}', '${app.status === 'online' ? 'restart' : 'start'}', ${app.id})" 
                                                     style="background: transparent; border: 1px solid var(--primary-cyan); color: var(--primary-cyan); padding: 2px 5px; cursor: pointer; font-family: inherit; font-size: 0.8em;">
                                                     ${app.status === 'online' ? '↻' : '▶'}
                                                  </button>
-                                                 <button onclick="controlApp('${n.node_id}', 'stop', ${app.id})" 
+                                                 <button onclick="controlApp('${app.nodeId}', 'stop', ${app.id})" 
                                                     style="background: transparent; border: 1px solid var(--alert-red); color: var(--alert-red); padding: 2px 5px; cursor: pointer; font-family: inherit; font-size: 0.8em;">
                                                     ■
                                                  </button>
