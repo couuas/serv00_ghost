@@ -121,55 +121,64 @@ def main():
         print(summary_md)
 
     # Telegram Notification
-    # Escape special characters for MarkdownV2
-    # We will build a cleaner message for Telegram
     tg_token = telegram_config.get("telegramToken")
     tg_chat_id = telegram_config.get("telegramChatId")
 
     if tg_token and tg_chat_id:
         # Build Telegram Message
-        # Header
         current_time = (datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")
-        tg_msg = f"📢 *Server Health Check*  \n"
-        tg_msg += f"⏰ Time: `{current_time}` (CST)\n"
-        tg_msg += f"📊 Status: {success_count}/{len(servers)} Online\n\n"
         
-        for r in results:
-            # Escape necessary characters: _ * [ ] ( ) ~ ` > # + - = | { } . !
-            # Or just use simple formatting
-             # Simple approach: Usage of monospace for host/user
-            user_host = f"{r['username']}@{r['host']}"
-            status_icon = "🟢" if r['is_online'] else "🔴"
-            # Only show failed details if offline
-            detail_txt = f" \n   Reason: `{r['details']}`" if not r['is_online'] and r['details'] else ""
-            
-            tg_msg += f"{status_icon} `{user_host}`: {r['status']}{detail_txt}\n"
-
-        # Escape reserved characters for MarkdownV2 if needed, or use 'Markdown' mode?
-        # The script uses MarkdownV2 in the function.
-        # MarkdownV2 requires escaping: _ * [ ] ( ) ~ ` > # + - = | { } . !
-        # It is safer/easier to use 'HTML' or just 'Markdown' (legacy) if we want less strict escaping,
-        # OR just handle the escaping. 
-        # Let's try to do basic escaping for MarkdownV2.
-        
+        # Header (MarkdownV2 escaping needed for non-code blocks)
         def escape_md2(text):
             escape_chars = r"_*[]()~`>#+-=|{}.!"
             return "".join(f"\\{c}" if c in escape_chars else c for c in text)
 
-        # Re-build strictly for MarkdownV2 to avoid errors
-        tg_msg_v2 = f"📢 *Server Health Check*\n"
-        tg_msg_v2 += f"⏰ Time: `{escape_md2(current_time)}` \\(CST\\)\n"
-        tg_msg_v2 += f"📊 Status: {success_count}/{len(servers)} Online\n\n"
-        
+        header = f"📢 *Server Health Check*\n"
+        header += f"⏰ Time: `{escape_md2(current_time)}` \\(CST\\)\n"
+        header += f"📊 Status: {success_count}/{len(servers)} Online\n"
+
+        # Content in Code Block for Alignment
+        # Calculate max length of username@host for padding
+        max_len = 0
+        rows = []
         for r in results:
-            user_host = escape_md2(f"{r['username']}@{r['host']}")
-            status_text = escape_md2(r['status'])
-            status_icon = "🟢" if r['is_online'] else "🔴"
-            
-            tg_msg_v2 += f"{status_icon} `{user_host}`: {status_text}\n"
+            user_host = f"{r['username']}@{r['host']}"
+            max_len = max(max_len, len(user_host))
+            # Determine status symbol/text
+            if r['is_online']:
+                status_short = "✅ OK"
+            else:
+                status_short = "❌ FAIL"
+            rows.append((user_host, status_short, r))
+
+        # Build clean table in a code block
+        table_lines = []
+        for user_host, status_short, r in rows:
+            # Pad host to align status to the right
+            # e.g "user@host      ... ✅ OK"
+            padding = " " * (max_len - len(user_host) + 2)
+            line = f"{user_host}{padding}{status_short}"
+            table_lines.append(line)
+        
+        table_str = "\n".join(table_lines)
+        
+        # Combine: Header + Code Block
+        # ```
+        # user@host  ✅ OK
+        # ```
+        tg_msg_v2 = f"{header}```text\n{table_str}\n```"
+        
+        # Append error details outside code block if any
+        has_errors = False
+        for r in results:
             if not r['is_online'] and r['details']:
-                err_detail = escape_md2(r['details'][:50]) # limit length
-                tg_msg_v2 += f"   Reason: `{err_detail}`\n"
+                if not has_errors:
+                    tg_msg_v2 += "\n*Errors:*\n"
+                    has_errors = True
+                
+                clean_host = escape_md2(f"{r['username']}@{r['host']}")
+                clean_err = escape_md2(r['details'][:100])
+                tg_msg_v2 += f"🔴 {clean_host}: `{clean_err}`\n"
 
         send_telegram_message(tg_token, tg_chat_id, tg_msg_v2)
 
@@ -177,4 +186,7 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
+    # Fix for Windows console encoding
+    if sys.platform.startswith('win'):
+        sys.stdout.reconfigure(encoding='utf-8')
     main()
