@@ -22,6 +22,7 @@ def make_handlers(loop, options):
     handlers = [
         (r'/', IndexHandler, dict(loop=loop, policy=policy,
                                   host_keys_settings=host_keys_settings)),
+        (r'/api/slave/pm2', SlavePM2APIHandler),  # Available on ALL nodes
         (r'/ws', WsockHandler, dict(loop=loop))
     ]
     
@@ -34,7 +35,7 @@ def make_handlers(loop, options):
             (r'/api/control', NodeControlHandler),
             (r'/api/callback/logs', LogCallbackHandler),
             (r'/api/callback/apps', AppListCallbackHandler),
-            (r'/api/slave/pm2', SlavePM2APIHandler),      # Runs on Slave
+            (r'/api/callback/apps', AppListCallbackHandler),
             (r'/api/proxy/apps', MasterAppsProxyHandler), # Runs on Master
             (r'/apps/([^/]+)', AppsPageHandler),          # Frontend Page
             (r'/api/logs', LogViewHandler),
