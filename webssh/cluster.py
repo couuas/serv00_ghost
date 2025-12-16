@@ -47,6 +47,20 @@ class NodeManager:
         self.nodes = {} 
         self.command_queue = {} # {node_id: [list_of_commands]}
         self.log_buffer = {} # {node_id_pm_id: "log content"}
+        self.node_apps = {} # {node_id: [app_list]}
+
+    def get_nodes(self):
+        # Merge static node list (if any), active nodes from heartbeat, and apps
+        # For now simpler approach: return self.nodes, injected with apps
+        nodes_list = []
+        for node_id, info in self.nodes.items():
+            # Inject apps if available
+            info['stats']['pm2'] = self.node_apps.get(node_id, [])
+            nodes_list.append(info)
+        return nodes_list
+    
+    def update_apps(self, node_id, apps):
+        self.node_apps[node_id] = apps
 
     def get_logs(self, node_id, pm_id):
         key = f"{node_id}_{pm_id}"
@@ -112,40 +126,13 @@ class SlaveWorker:
         self.node_id = self.node_name 
         self.http_client = tornado.httpclient.AsyncHTTPClient()
 
-    async def collect_stats(self):
         stats = {
             'cpu': 0.0,
             'ram_usage': 0,
             'ram_total': 0,
             'disk_usage': 0,
-            'processes': 0,
-            'pm2': []
+            'processes': 0
         }
-        
-        # Collect PM2 Processes
-        try:
-             # User reported 'pm2' missing, needs 'npx pm2' and confirms 'y'
-             # Using -y to auto-confirm npx prompts
-             proc = await asyncio.create_subprocess_shell(
-                'npx -y pm2 jlist',
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-             stdout, stderr = await proc.communicate()
-             if proc.returncode == 0:
-                 pm2_data = json.loads(stdout.decode())
-                 # Simplify data to minimize payload
-                 for p in pm2_data:
-                     stats['pm2'].append({
-                         'id': p.get('pm_id'),
-                         'name': p.get('name'),
-                         'status': p.get('pm2_env', {}).get('status'),
-                         'memory': p.get('monit', {}).get('memory', 0),
-                         'cpu': p.get('monit', {}).get('cpu', 0),
-                         'uptime': p.get('pm2_env', {}).get('pm_uptime', 0)
-                     })
-        except Exception:
-             pass # PM2 likely not installed or fails, ignore silently
         
         if psutil:
             logging.info("Collecting stats with psutil")
@@ -259,10 +246,36 @@ class SlaveWorker:
 
     async def execute_remote_command(self, cmd_data):
         """Execute command received from Master"""
-        action = cmd_data.get('action') # start, stop, restart, delete, logs
+        action = cmd_data.get('action') # start, stop, restart, delete, logs, list_apps
         pm_id = cmd_data.get('pm_id')
         
-        if action == 'logs':
+        if action == 'list_apps':
+             logging.info("Fetching App List (On-Demand)")
+             try:
+                 cmd = 'npx -y pm2 jlist'
+                 proc = await asyncio.create_subprocess_shell(
+                    cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+                 )
+                 stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=8.0)
+                 if proc.returncode == 0:
+                     pm2_data = json.loads(stdout.decode())
+                     apps = []
+                     for p in pm2_data:
+                         apps.append({
+                             'id': p.get('pm_id'),
+                             'name': p.get('name'),
+                             'status': p.get('pm2_env', {}).get('status'),
+                             'memory': p.get('monit', {}).get('memory', 0),
+                             'cpu': p.get('monit', {}).get('cpu', 0),
+                             'uptime': p.get('pm2_env', {}).get('pm_uptime', 0)
+                         })
+                     await self.report_apps(apps)
+                 else:
+                     logging.error(f"List Apps Failed: {stderr.decode()}")
+             except Exception as e:
+                 logging.error(f"List Apps Error: {e}")
+
+        elif action == 'logs':
              logging.info(f"Fetching logs for {pm_id}")
              try:
                  # Fetch headers/tails of logs
@@ -307,6 +320,14 @@ class SlaveWorker:
              await self.http_client.fetch(url, method='POST', body=json.dumps(data), headers=headers)
         except Exception as e:
              logging.error(f"Failed to upload logs: {e}")
+
+    async def report_apps(self, apps):
+        url = self.master_url.replace('/heartbeat', '/callback/apps')
+        data = {'node_id': self.node_id, 'apps': apps}
+        headers = {'Content-Type': 'application/json'}
+        if self.secret: headers['X-Cluster-Secret'] = self.secret
+        try: await self.http_client.fetch(url, method='POST', body=json.dumps(data), headers=headers)
+        except Exception as e: logging.error(f"Failed to upload apps: {e}")
 
     def start(self):
         logging.info(f"Starting SlaveWorker connecting to {self.master_url}")
@@ -409,6 +430,18 @@ class LogCallbackHandler(MasterHandler):
         try:
             data = json.loads(self.request.body)
             node_manager.save_logs(data.get('node_id'), data.get('pm_id'), data.get('content'))
+            self.write({"status": "ok"})
+        except:
+            self.set_status(400)
+
+class AppListCallbackHandler(MasterHandler):
+    """Slave posts app list here."""
+    def post(self):
+        if not self.check_permission():
+            self.set_status(403); return
+        try:
+            data = json.loads(self.request.body)
+            node_manager.update_apps(data.get('node_id'), data.get('apps'))
             self.write({"status": "ok"})
         except:
             self.set_status(400)
