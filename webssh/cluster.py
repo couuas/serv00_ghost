@@ -261,7 +261,7 @@ class SlaveWorker:
                  proc = await asyncio.create_subprocess_shell(
                     cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
                  )
-                 stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=8.0)
+                 stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30.0)
                  if proc.returncode == 0:
                      pm2_data = json.loads(stdout.decode())
                      apps = []
@@ -278,7 +278,9 @@ class SlaveWorker:
                  else:
                      logging.error(f"List Apps Failed: {stderr.decode()}")
              except Exception as e:
+                 import traceback
                  logging.error(f"List Apps Error: {e}")
+                 logging.error(traceback.format_exc())
 
         elif action == 'logs':
              logging.info(f"Fetching logs for {pm_id}")

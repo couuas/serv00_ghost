@@ -785,7 +785,6 @@
                     <div class="actions" style="display:flex; flex-direction:column; gap:8px;">
                         ${groupNodes.map(n => {
                     const sshUrl = n.url || '#';
-                    const connectCmnd = `ssh ${n.username}@${n.name}`;
 
                     return `
                                 <div style="display: flex; gap: 5px; width: 100%;">
@@ -796,11 +795,6 @@
                                         ↻
                                     </button>
                                 </div>
-                                ${n.username && n.username !== 'unknown' ? `
-                                    <button onclick="navigator.clipboard.writeText('${connectCmnd}'); alert('Copied: ${connectCmnd}')" title="Copy SSH Command">
-                                        COPY SSH
-                                    </button>
-                                ` : ''}
                             `;
                 }).join('')}
                     </div>
