@@ -556,7 +556,37 @@
                 });
                 if (onlineCount > 0) avgCpu = avgCpu / onlineCount;
 
-                const div = document.createElement('div');
+                // App List Rendering
+                let appListHtml = '';
+                if (isAnyOnline) {
+                    // Collect apps from all online nodes in this group (usually just 1 for standalone/simple setup)
+                    let apps = [];
+                    groupNodes.forEach(n => {
+                        if (n.stats && n.stats.pm2 && n.stats.pm2.length > 0) {
+                            apps = apps.concat(n.stats.pm2);
+                        }
+                    });
+
+                    if (apps.length > 0) {
+                        appListHtml = `
+                             <div style="margin-top: 15px; border-top: 1px solid rgba(0, 243, 255, 0.2); paddingTop: 10px;">
+                                 <h4 style="margin: 0 0 10px 0; font-size: 0.8em; color: var(--text-dim); letter-spacing: 1px;">// ACTIVE_APPLICATIONS</h4>
+                                 <div style="display: flex; flex-direction: column; gap: 5px;">
+                                     ${apps.map(app => `
+                                         <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8em; background: rgba(0, 243, 255, 0.03); padding: 5px 8px; border-left: 2px solid ${app.status === 'online' ? 'var(--neon-green)' : 'var(--alert-red)'};">
+                                             <span style="color: var(--text-main); font-weight: bold;">${app.name}</span>
+                                             <div style="display: flex; gap: 10px; color: var(--text-dim);">
+                                                 <span>${(app.memory / 1024 / 1024).toFixed(0)}MB</span>
+                                                 <span style="color: ${app.status === 'online' ? 'var(--neon-green)' : 'var(--alert-red)'}">${app.status.toUpperCase()}</span>
+                                             </div>
+                                         </div>
+                                     `).join('')}
+                                 </div>
+                             </div>
+                         `;
+                    }
+                }
+
                 div.className = 'node-card';
                 // Note: removed inline styles that clash with CSS, added cyberpunk structure
                 div.innerHTML = `
@@ -574,6 +604,7 @@
                             <div class="stat-item"><span>MAX DSK</span> <strong>${maxDisk.toFixed(0)}%</strong></div>
                             <div class="stat-item"><span>PROCS</span> <strong>${totalProcs}</strong></div>
                         </div>
+                        ${appListHtml}
                     </div>
                     <div class="actions" style="display:flex; flex-direction:column; gap:8px;">
                         ${IS_AUTHED ? groupNodes.map(n => `
