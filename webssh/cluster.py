@@ -126,6 +126,7 @@ class SlaveWorker:
         self.node_id = self.node_name 
         self.http_client = tornado.httpclient.AsyncHTTPClient()
 
+    async def collect_stats(self):
         stats = {
             'cpu': 0.0,
             'ram_usage': 0,
