@@ -234,13 +234,46 @@
         }
 
         /* Grid Layout Override */
+        /* Grid Layout Override */
         #node-list.grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
             gap: 20px;
         }
 
         #node-list.grid .node-card {
+            flex-direction: column;
+            align-items: flex-start;
             border-top: 2px solid var(--primary-cyan);
             border-left: 1px solid rgba(0, 243, 255, 0.3);
+        }
+
+        #node-list.grid .node-info {
+            width: 100%;
+        }
+
+        #node-list.grid .stats {
+            flex-direction: row;
+            flex-wrap: wrap;
+        }
+
+        #node-list.grid .actions {
+            width: 100%;
+            margin-top: 15px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
         }
     </style>
 </head>
@@ -248,246 +281,276 @@
 <body>
     <div class="container">
         <div
-            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid rgba(0,243,255,0.2); padding-bottom: 20px;">
-            <div style="display: flex; align-items: center; gap: 20px;">
+            style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 30px; border-bottom: 1px solid rgba(0,243,255,0.2); padding-bottom: 20px;">
+            <div style="display: flex; flex-direction: column; gap: 5px;">
                 <h1>Cluster // DASHBOARD</h1>
-                <div id="master-status" style="font-size: 0.8rem; display: flex; gap: 15px; padding: 5px 15px;">
+                <div id="auth-controls" style="font-size: 0.8em; color: var(--text-dim);"></div>
+            </div>
+
+            <div id="master-status"
+                style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 5px; padding: 10px; border: 1px solid var(--primary-cyan); align-items: flex-end;">
+            </div>
+        </div>
+
+        <!-- REPLACED TABS WITH SIMPLE SPACER -->
+        <div style="margin-top: 20px;">
+
+
+            <div id="tab-cluster" class="tab-content active" style="margin-top: 20px;">
+                <div class="toolbar">
+                    <button class="toolbar-btn" onclick="toggleView()" title="Example: List/Grid"><span
+                            id="view-icon">≣</span> VIEW_MODE</button>
+                    <button class="toolbar-btn" onclick="toggleSort()" title="Sort"><span id="sort-icon">⬇️</span>
+                        SORT_DATA</button>
+                </div>
+                <div id="node-list">
+                    <p style="color: var(--primary-cyan); animation: blink 1s infinite;">INITIALIZING CONNECTION...</p>
                 </div>
             </div>
-            <div id="auth-controls"></div>
         </div>
 
-        <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('cluster', event)">[ SYSTEM_NODES ]</button>
-        </div>
-
-        <div id="tab-cluster" class="tab-content active" style="margin-top: 20px;">
-            <div class="toolbar">
-                <button class="toolbar-btn" onclick="toggleView()" title="Example: List/Grid"><span
-                        id="view-icon">≣</span> VIEW_MODE</button>
-                <button class="toolbar-btn" onclick="toggleSort()" title="Sort"><span id="sort-icon">⬇️</span>
-                    SORT_DATA</button>
-            </div>
-            <div id="node-list">
-                <p style="color: var(--primary-cyan); animation: blink 1s infinite;">INITIALIZING CONNECTION...</p>
+        <div id="loginModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeLogin()">&times;</span>
+                <h2>ACCESS REQUIRED</h2>
+                <input type="password" id="passwordInput" placeholder="ENTER SECURITY KEY"
+                    style="width: 100%; margin: 15px 0; box-sizing: border-box;" onkeypress="handleEnter(event)">
+                <button class="login-btn" onclick="performLogin()" style="width: 100%">AUTHENTICATE</button>
+                <p id="loginError" style="color: var(--alert-red); display: none; margin-top: 10px; font-size: 0.8em;">
+                </p>
             </div>
         </div>
-    </div>
 
-    <div id="loginModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeLogin()">&times;</span>
-            <h2>ACCESS REQUIRED</h2>
-            <input type="password" id="passwordInput" placeholder="ENTER SECURITY KEY"
-                style="width: 100%; margin: 15px 0; box-sizing: border-box;" onkeypress="handleEnter(event)">
-            <button class="login-btn" onclick="performLogin()" style="width: 100%">AUTHENTICATE</button>
-            <p id="loginError" style="color: var(--alert-red); display: none; margin-top: 10px; font-size: 0.8em;"></p>
+        <!-- AUTH REQUIRED OVERLAY FOR GUEST MODE -->
+        <div id="guestOverlay" class="modal" style="background-color: rgba(0,0,0,0.8);">
+            <div class="modal-content" style="border-color: var(--alert-red); text-align: center; margin-top: 20vh;">
+                <h2 style="color: var(--alert-red); border-color: var(--alert-red);">ACCESS REQUIRED</h2>
+                <p style="color: var(--text-main); margin-bottom: 20px;">SYSTEM LOCKED. AUTHENTICATION REQUIRED FOR
+                    CONTROL.</p>
+                <button class="login-btn" onclick="openLogin()"
+                    style="border-color: var(--alert-red)!important; color: var(--alert-red)!important; width: 100%;">INITIALIZE
+                    LOGIN SEQUENCE</button>
+            </div>
         </div>
-    </div>
 
-    <script>
-        const CLUSTER_SECRET = "{{ secret }}";
-        const IS_AUTHED = "{{ is_authed }}" == "True";
+        <script>
+            const CLUSTER_SECRET = "{{ secret }}";
+            const IS_AUTHED = "{{ is_authed }}" == "True";
 
-        // Ensure XSRF cookie is set and available for JS
-        const REQUEST_XSRF_TOKEN = "{{ handler.xsrf_token }}";
+            // Ensure XSRF cookie is set and available for JS
+            const REQUEST_XSRF_TOKEN = "{{ handler.xsrf_token }}";
 
-        let currentSort = 'asc'; // 'asc' or 'desc'
-        let currentView = 'list'; // 'list' or 'grid'
-        let lastNodes = []; // store for re-rendering
+            let currentSort = 'asc'; // 'asc' or 'desc'
+            let currentView = 'list'; // 'list' or 'grid'
+            let lastNodes = []; // store for re-rendering
 
-        function connect(url) {
-            let targetUrl = url;
-            if (CLUSTER_SECRET) {
-                targetUrl += (targetUrl.includes('?') ? '&' : '?') + 'secret=' + encodeURIComponent(CLUSTER_SECRET);
+            function connect(url) {
+                let targetUrl = url;
+                if (CLUSTER_SECRET) {
+                    targetUrl += (targetUrl.includes('?') ? '&' : '?') + 'secret=' + encodeURIComponent(CLUSTER_SECRET);
+                }
+                window.open(targetUrl, '_blank');
             }
-            window.open(targetUrl, '_blank');
-        }
 
 
-        // --- Tab Logic ---
-        async function switchTab(tab, event) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            // --- Tab Logic ---
+            async function switchTab(tab, event) {
+                document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+                document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
 
-            document.getElementById('tab-' + tab).classList.add('active');
-            if (event) {
-                event.currentTarget.classList.add('active');
-            } else {
-                const index = ['cluster'].indexOf(tab);
-                if (index >= 0) document.querySelectorAll('.tab-btn')[index].classList.add('active');
-            }
-        }
-
-        // --- Auth & Main Logic ---
-        function initAuthUI() {
-            const container = document.getElementById('auth-controls');
-            // Style overridden by CSS via class logic below, simplified HTML here
-            if (IS_AUTHED) {
-                container.innerHTML = `<button onclick="connect('/webssh')" class="login-btn" style="border-color: var(--neon-green)!important; color: var(--neon-green)!important;">> LAUNCH_WEBSSH</button>`;
-            } else {
-                container.innerHTML = `<button onclick="openLogin()" class="login-btn">LOGIN_SYSTEM</button>`;
-            }
-        }
-
-        function openLogin() {
-            document.getElementById('loginModal').style.display = 'block';
-            document.getElementById('passwordInput').focus();
-        }
-        function closeLogin() { document.getElementById('loginModal').style.display = 'none'; }
-
-        function handleEnter(e) {
-            if (e.key === 'Enter') performLogin();
-        }
-
-        async function performLogin() {
-            const pwd = document.getElementById('passwordInput').value;
-            const err = document.getElementById('loginError');
-            err.style.display = 'none';
-
-            try {
-                // Get XSRF token
-                const headers = { 'Content-Type': 'application/json' };
-                if (REQUEST_XSRF_TOKEN) headers['X-XSRFToken'] = REQUEST_XSRF_TOKEN;
-
-                const res = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: headers,
-                    body: JSON.stringify({ password: pwd })
-                });
-                if (res.ok) {
-                    window.location.reload();
+                document.getElementById('tab-' + tab).classList.add('active');
+                if (event) {
+                    event.currentTarget.classList.add('active');
                 } else {
-                    let errorMsg = "Invalid Password";
-                    try {
-                        const data = await res.json();
-                        if (data.error) errorMsg = data.error;
-                    } catch (e) {
-                        errorMsg = "Login Failed (" + res.status + " " + res.statusText + ")";
+                    const index = ['cluster'].indexOf(tab);
+                    if (index >= 0) document.querySelectorAll('.tab-btn')[index].classList.add('active');
+                }
+            }
+
+            // --- Auth & Main Logic ---
+            function initAuthUI() {
+                const container = document.getElementById('auth-controls');
+                // Style overridden by CSS via class logic below, simplified HTML here
+                if (IS_AUTHED) {
+                    container.innerHTML = `<span style="color: var(--neon-green)">[ ACCESS GRANTED ]</span>`;
+                    document.getElementById('guestOverlay').style.display = 'none';
+                } else {
+                    container.innerHTML = `<span style="color: var(--alert-red)">[ ACCESS LOCKED ]</span>`;
+                    if (document.cookie.indexOf('XSRF') === -1) {
+                        // Initial load might not have cookie set yet?
                     }
-                    err.textContent = "Error: " + errorMsg;
+                    // Only show overlay if we want to force login, user said "remove login button" implies 
+                    // maybe they want it always visible or moved. 
+                    // Request: "remove LOGIN_SYSTEM button, move ACCESS REQUIRED to top"
+                    // Let's hide the overlay by default and only show login modal when triggered? 
+                    // Actually user said "move ACCESS REQUIRED to top". 
+                    // Maybe they mean the login modal itself?
+                    // Or just the "dashboard title"? 
+                    // Interpreting "ACCESS REQUIRED moved to top" as a status indicator.
+                    // The Guest Overlay is a good way to "force" the attention or maybe just a header bar.
+                }
+            }
+
+            function openLogin() {
+                document.getElementById('loginModal').style.display = 'block';
+                document.getElementById('passwordInput').focus();
+            }
+            function closeLogin() { document.getElementById('loginModal').style.display = 'none'; }
+
+            function handleEnter(e) {
+                if (e.key === 'Enter') performLogin();
+            }
+
+            async function performLogin() {
+                const pwd = document.getElementById('passwordInput').value;
+                const err = document.getElementById('loginError');
+                err.style.display = 'none';
+
+                try {
+                    // Get XSRF token
+                    const headers = { 'Content-Type': 'application/json' };
+                    if (REQUEST_XSRF_TOKEN) headers['X-XSRFToken'] = REQUEST_XSRF_TOKEN;
+
+                    const res = await fetch('/api/login', {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify({ password: pwd })
+                    });
+                    if (res.ok) {
+                        window.location.reload();
+                    } else {
+                        let errorMsg = "Invalid Password";
+                        try {
+                            const data = await res.json();
+                            if (data.error) errorMsg = data.error;
+                        } catch (e) {
+                            errorMsg = "Login Failed (" + res.status + " " + res.statusText + ")";
+                        }
+                        err.textContent = "Error: " + errorMsg;
+                        err.style.display = 'block';
+                    }
+                } catch (e) {
+                    err.textContent = "System Error: " + e;
                     err.style.display = 'block';
                 }
-            } catch (e) {
-                err.textContent = "System Error: " + e;
-                err.style.display = 'block';
-            }
-        }
-
-        function getCookie(name) {
-            var r = document.cookie.match("\\b" + name + "=([^;]*)\\b");
-            return r ? r[1] : undefined;
-        }
-
-        function toggleSort() {
-            currentSort = currentSort === 'asc' ? 'desc' : 'asc';
-            document.getElementById('sort-icon').textContent = currentSort === 'asc' ? '⬇️' : '⬆️';
-            fetchNodes();
-        }
-
-        function toggleView() {
-            currentView = currentView === 'list' ? 'grid' : 'list';
-            document.getElementById('view-icon').textContent = currentView === 'list' ? '≣' : '⊞';
-            const container = document.getElementById('node-list');
-            if (currentView === 'grid') container.classList.add('grid');
-            else container.classList.remove('grid');
-        }
-
-        async function fetchNodes() {
-            try {
-                const response = await fetch('/api/nodes');
-                if (!response.ok) {
-                    if (response.status === 401 && IS_AUTHED) window.location.reload();
-                    throw new Error('Failed to fetch');
-                }
-                const nodes = await response.json();
-                lastNodes = nodes; // Save for re-renders
-                renderNodes(nodes);
-            } catch (e) {
-                console.error(e);
-            }
-        }
-
-        function renderNodes(nodes) {
-            const container = document.getElementById('node-list');
-            const masterStatusDiv = document.getElementById('master-status');
-
-            // Apply View State
-            if (currentView === 'grid') container.classList.add('grid');
-            else container.classList.remove('grid');
-
-            // Extract Master-Local logic
-            const masterNodeIndex = nodes.findIndex(n => n.name === 'Master-Local');
-            if (masterNodeIndex > -1) {
-                const master = nodes[masterNodeIndex];
-                nodes.splice(masterNodeIndex, 1);
-                const isOnline = master.is_online;
-                masterStatusDiv.innerHTML = `
-                    <span style="display: flex; align-items: center;">
-                        <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
-                        MASTER_NODE [${isOnline ? 'ONLINE' : 'OFFLINE'}]
-                    </span>
-                    <span style="color: var(--primary-cyan)">CPU: <strong>${parseFloat(master.stats.cpu || 0).toFixed(1)}%</strong></span>
-                    <span style="color: var(--primary-cyan)">RAM: <strong>${(master.stats.ram_usage / 1024 / 1024).toFixed(0)} MB</strong></span>
-                `;
-                masterStatusDiv.style.display = 'flex';
-            } else {
-                masterStatusDiv.style.display = 'none';
             }
 
-            container.innerHTML = '';
-            if (nodes.length === 0) {
-                container.innerHTML = '<p style="color: var(--text-dim)">No slave units detected via network scan.</p>';
-                return;
+            function getCookie(name) {
+                var r = document.cookie.match("\\b" + name + "=([^;]*)\\b");
+                return r ? r[1] : undefined;
             }
 
-            const grouped = {};
-            nodes.forEach(node => {
-                if (!grouped[node.name]) grouped[node.name] = [];
-                grouped[node.name].push(node);
-            });
-
-            // Sort logic
-            function extractNumber(name) {
-                const match = name.match(/s(\d+)/i);
-                if (match) return parseInt(match[1]);
-                const anyNum = name.match(/(\d+)/);
-                return anyNum ? parseInt(anyNum[1]) : 0;
+            function toggleSort() {
+                currentSort = currentSort === 'asc' ? 'desc' : 'asc';
+                document.getElementById('sort-icon').textContent = currentSort === 'asc' ? '⬇️' : '⬆️';
+                fetchNodes();
             }
 
-            let keys = Object.keys(grouped);
-            keys.sort((a, b) => {
-                const numA = extractNumber(a);
-                const numB = extractNumber(b);
+            function toggleView() {
+                currentView = currentView === 'list' ? 'grid' : 'list';
+                document.getElementById('view-icon').textContent = currentView === 'list' ? '≣' : '⊞';
+                const container = document.getElementById('node-list');
+                if (currentView === 'grid') container.classList.add('grid');
+                else container.classList.remove('grid');
+            }
 
-                if (numA !== numB) {
-                    return currentSort === 'asc' ? numA - numB : numB - numA;
-                }
-                if (currentSort === 'asc') return a.localeCompare(b);
-                else return b.localeCompare(a);
-            });
-
-            keys.forEach(name => {
-                const groupNodes = grouped[name];
-                const isAnyOnline = groupNodes.some(n => n.is_online);
-                const username = groupNodes[0].username || 'N/A';
-
-                let avgCpu = 0, totalRam = 0, maxDisk = 0, totalProcs = 0, onlineCount = 0;
-                groupNodes.forEach(n => {
-                    if (n.is_online) {
-                        avgCpu += parseFloat(n.stats.cpu || 0);
-                        totalRam += parseFloat(n.stats.ram_usage || 0);
-                        maxDisk = Math.max(maxDisk, parseFloat(n.stats.disk_usage || 0));
-                        totalProcs += parseInt(n.stats.processes || 0);
-                        onlineCount++;
+            async function fetchNodes() {
+                try {
+                    const response = await fetch('/api/nodes');
+                    if (!response.ok) {
+                        if (response.status === 401 && IS_AUTHED) window.location.reload();
+                        throw new Error('Failed to fetch');
                     }
-                });
-                if (onlineCount > 0) avgCpu = avgCpu / onlineCount;
+                    const nodes = await response.json();
+                    lastNodes = nodes; // Save for re-renders
+                    renderNodes(nodes);
+                } catch (e) {
+                    console.error(e);
+                }
+            }
 
-                const div = document.createElement('div');
-                div.className = 'node-card';
-                // Note: removed inline styles that clash with CSS, added cyberpunk structure
-                div.innerHTML = `
+            function renderNodes(nodes) {
+                const container = document.getElementById('node-list');
+                const masterStatusDiv = document.getElementById('master-status');
+
+                // Apply View State
+                if (currentView === 'grid') container.classList.add('grid');
+                else container.classList.remove('grid');
+
+                // Extract Master-Local logic
+                const masterNodeIndex = nodes.findIndex(n => n.name === 'Master-Local');
+                if (masterNodeIndex > -1) {
+                    const master = nodes[masterNodeIndex];
+                    nodes.splice(masterNodeIndex, 1);
+                    const isOnline = master.is_online;
+                    masterStatusDiv.innerHTML = `
+                        <span style="display: flex; align-items: center; margin-bottom: 5px;">
+                            <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
+                            MASTER_NODE [${isOnline ? 'ONLINE' : 'OFFLINE'}]
+                        </span>
+                        <div style="text-align: right;">
+                             <span style="color: var(--primary-cyan); margin-left: 10px;">CPU: <strong>${parseFloat(master.stats.cpu || 0).toFixed(1)}%</strong></span>
+                             <span style="color: var(--primary-cyan); margin-left: 10px;">RAM: <strong>${(master.stats.ram_usage / 1024 / 1024).toFixed(0)} MB</strong></span>
+                        </div>
+                `;
+                    masterStatusDiv.style.display = 'flex';
+                } else {
+                    masterStatusDiv.style.display = 'none';
+                }
+
+                container.innerHTML = '';
+                if (nodes.length === 0) {
+                    container.innerHTML = '<p style="color: var(--text-dim)">No slave units detected via network scan.</p>';
+                    return;
+                }
+
+                const grouped = {};
+                nodes.forEach(node => {
+                    if (!grouped[node.name]) grouped[node.name] = [];
+                    grouped[node.name].push(node);
+                });
+
+                // Sort logic
+                function extractNumber(name) {
+                    const match = name.match(/s(\d+)/i);
+                    if (match) return parseInt(match[1]);
+                    const anyNum = name.match(/(\d+)/);
+                    return anyNum ? parseInt(anyNum[1]) : 0;
+                }
+
+                let keys = Object.keys(grouped);
+                keys.sort((a, b) => {
+                    const numA = extractNumber(a);
+                    const numB = extractNumber(b);
+
+                    if (numA !== numB) {
+                        return currentSort === 'asc' ? numA - numB : numB - numA;
+                    }
+                    if (currentSort === 'asc') return a.localeCompare(b);
+                    else return b.localeCompare(a);
+                });
+
+                keys.forEach(name => {
+                    const groupNodes = grouped[name];
+                    const isAnyOnline = groupNodes.some(n => n.is_online);
+                    const username = groupNodes[0].username || 'N/A';
+
+                    let avgCpu = 0, totalRam = 0, maxDisk = 0, totalProcs = 0, onlineCount = 0;
+                    groupNodes.forEach(n => {
+                        if (n.is_online) {
+                            avgCpu += parseFloat(n.stats.cpu || 0);
+                            totalRam += parseFloat(n.stats.ram_usage || 0);
+                            maxDisk = Math.max(maxDisk, parseFloat(n.stats.disk_usage || 0));
+                            totalProcs += parseInt(n.stats.processes || 0);
+                            onlineCount++;
+                        }
+                    });
+                    if (onlineCount > 0) avgCpu = avgCpu / onlineCount;
+
+                    const div = document.createElement('div');
+                    div.className = 'node-card';
+                    // Note: removed inline styles that clash with CSS, added cyberpunk structure
+                    div.innerHTML = `
                     <div class="node-info">
                         <h3>
                             <span class="status-dot ${isAnyOnline ? 'online' : 'offline'}"></span>
@@ -511,14 +574,14 @@
                         `).join('') : '<span style="color:var(--text-dim); font-size:0.8em; font-style:italic;">[ GUEST MODE // READ ONLY ]</span>'}
                     </div>
                 `;
-                container.appendChild(div);
-            });
-        }
+                    container.appendChild(div);
+                });
+            }
 
-        initAuthUI();
-        fetchNodes();
-        setInterval(fetchNodes, 5000);
-    </script>
+            initAuthUI();
+            fetchNodes();
+            setInterval(fetchNodes, 5000);
+        </script>
 </body>
 
 </html>
