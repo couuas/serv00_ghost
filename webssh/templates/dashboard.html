@@ -224,6 +224,15 @@
         }
 
         /* Toolbar */
+        .toolbar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 30px;
+            gap: 15px;
+            border-bottom: 1px solid rgba(0, 243, 255, 0.1);
+            padding-bottom: 10px;
+        }
+
         .toolbar-btn {
             color: var(--text-main);
         }
@@ -316,10 +325,10 @@
 
         <div id="tab-cluster" class="tab-content active" style="margin-top: 20px;">
             <div class="toolbar">
-                <button class="toolbar-btn" onclick="toggleView()" title="Example: List/Grid"><span
-                        id="view-icon">≣</span> VIEW_MODE</button>
-                <button class="toolbar-btn" onclick="toggleSort()" title="Sort"><span id="sort-icon">⬇️</span>
-                    SORT_DATA</button>
+                <button class="toolbar-btn" onclick="toggleView()" title="View Mode"><span id="view-icon">≣</span>
+                    VIEW</button>
+                <button class="toolbar-btn" onclick="toggleSort()" title="Sort Order"><span id="sort-icon">⬇️</span>
+                    SORT</button>
             </div>
             <div id="node-list">
                 <p style="color: var(--primary-cyan); animation: blink 1s infinite;">INITIALIZING CONNECTION...</p>

@@ -4,7 +4,6 @@
 ![Python](https://img.shields.io/badge/python-3.7+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-**[🔴 Live Demo](https://cluster.serv00.us.kg)**
 
 An advanced WebSSH solution capable of managing multiple servers (Serv00 nodes) in a distributed Master/Slave architecture.
 
@@ -75,6 +74,54 @@ The Master Dashboard (`/`) displays:
 ## 🔒 Security Note
 - **Secret Token**: Ensure `--secret` is complex and consistent across all nodes.
 - **HTTPS**: Recommend running behind Nginx with SSL, especially when using Smart Link which passes credentials in URL.
+
+## 🤖 Automation & Workflows
+
+The project includes GitHub Actions workflows for automated maintenance.
+
+### 1. Server Health Check (`health_check.yml`)
+- **Schedule**: Runs every 30 minutes.
+- **Function**: Checks SSH connectivity of all nodes in `SERVERS_JSON`.
+- **Alerts**: Sends notifications to Telegram if nodes are down.
+- **Configuration**: Requires `SERVERS_JSON` and `TELEGRAM_JSON` secrets.
+
+### 2. Rotate Cluster Token (`rotate_token.yml`)
+- **Trigger**: Manual (`workflow_dispatch`).
+- **Function**: Rotates the `--secret` token across all nodes (Slaves first, then Masters).
+- **Usage**:
+  - Set `SECRET_TOKEN` in Repository Variables.
+  - Run workflow to automatically update all nodes via SSH and restart PM2 processes.
+
+### 3. Update Dashboard Password (`update_password.yml`)
+- **Trigger**: Manual (`workflow_dispatch`).
+- **Function**: Updates the `--auth-password` for the Master Dashboard.
+- **Usage**:
+  - Set `MASTER_PASSWORD` in Repository Variables.
+  - Run workflow to update the Master node's login password.
+
+### Configuration (`SERVERS_JSON`)
+JSON array format for server connection details:
+```json
+[
+  {
+    "host": "1.2.3.4",
+    "port": 22,
+    "username": "root",
+    "password": "ssh_password",
+    "role": "master",
+    "path": "/path/to/webssh"
+  }
+]
+```
+
+### Configuration (`TELEGRAM_JSON`)
+JSON object for Telegram Bot configuration (used by Health Check):
+```json
+{
+  "token": "123456789:ABCdefGHIjklMNOpqrsTUVwx_yz",
+  "chat_id": "987654321"
+}
+```
 
 ## 📄 License
 MIT License
