@@ -532,9 +532,6 @@ class MasterAppsProxyHandler(BaseAuthHandler):
     def check_xsrf_cookie(self):
         return True
 
-    def get(self):
-        self.write({"status": "proxy_active", "mode": "master"})
-
     async def post(self):
         if not self.check_auth():
             self.set_status(403); return
