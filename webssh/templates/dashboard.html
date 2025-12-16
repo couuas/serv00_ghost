@@ -172,7 +172,29 @@
             border-radius: 0 !important;
         }
 
-        /* Modal */
+        /* Modal & Dialogs */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            /* Prevent background scroll */
+            background-color: rgba(0, 0, 0, 0.5);
+            /* Dimmed background */
+            backdrop-filter: blur(8px);
+            /* Blur effect */
+            align-items: center;
+            /* Center vertically */
+            justify-content: center;
+            /* Center horizontally */
+            display: none;
+            /* Default hidden, switched to flex via JS */
+        }
+
         .modal-content {
             background-color: #0a0a12;
             border: 1px solid var(--primary-cyan);
@@ -288,13 +310,13 @@
     <!-- Logs Modal -->
     <div id="logsModal" class="modal">
         <div class="modal-content"
-            style="width: 80%; max-width: 800px; height: 80vh; display: flex; flex-direction: column;">
+            style="width: 98%; max-width: none; height: 95vh; display: flex; flex-direction: column; background: rgba(10, 10, 10, 0.95);">
             <div class="modal-header">
                 <h2>// PROCESS_LOGS</h2>
                 <span class="close" onclick="closeLogs()">&times;</span>
             </div>
             <pre id="logsContent"
-                style="flex: 1; overflow: auto; background: #000; padding: 10px; color: #ccc; font-family: monospace; white-space: pre-wrap; margin-top: 10px;"></pre>
+                style="flex: 1; overflow: auto; background: #000; padding: 15px; color: #ccc; font-family: 'JetBrains Mono', monospace; font-size: 14px; white-space: pre-wrap; margin-top: 10px; border: 1px solid #333;"></pre>
         </div>
     </div>
 </head>
@@ -517,7 +539,8 @@
                     }
                 } catch (e) { }
 
-                if (attempts > 10) {
+                // Heartbeat is 10s, so we wait 30s to be safe
+                if (attempts > 30) {
                     clearInterval(poll);
                     if (content.innerText === 'Requesting logs from slave...') {
                         content.innerText = 'Timeout waiting for logs. (Slave might be offline or busy)';
