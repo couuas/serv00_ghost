@@ -1,0 +1,26 @@
+name: Deploy to Serv00 Hosts
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          pip install paramiko
+
+      - name: Deploy to all servers
+        env:
+          SERVERS_JSON: ${{ secrets.SERVERS_JSON }}
+        run: python scripts/pm2_deploy.py

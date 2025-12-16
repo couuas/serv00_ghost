@@ -529,6 +529,9 @@ class MasterAppsProxyHandler(BaseAuthHandler):
     """
     RUNS ON MASTER: Proxies requests from Apps UI to the target Slave API.
     """
+    def check_xsrf_cookie(self):
+        return True
+
     async def post(self):
         if not self.check_auth():
             self.set_status(403); return
