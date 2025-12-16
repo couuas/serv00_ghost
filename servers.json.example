@@ -1,0 +1,26 @@
+[
+  {
+    "host": "s1.serv00.com",
+    "port": 22,
+    "username": "user1",
+    "password": "password1",
+    "role": "master",
+    "path": "~/serv00_ghost"
+  },
+  {
+    "host": "s2.serv00.com",
+    "port": 22,
+    "username": "user2",
+    "password": "password2",
+    "role": "slave",
+    "path": "~/serv00_ghost"
+  },
+  {
+    "host": "s3.serv00.com",
+    "port": 22,
+    "username": "user3",
+    "password": "password3",
+    "role": "slave",
+    "path": "~/serv00_ghost"
+  }
+]

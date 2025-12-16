@@ -1,0 +1,45 @@
+name: Rotate Cluster Secret Token
+
+on:
+  workflow_dispatch:
+    inputs:
+      new_token:
+        description: 'New secret token (leave empty to use SECRET_TOKEN variable)'
+        required: false
+        type: string
+
+jobs:
+  rotate-token:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          pip install paramiko
+
+      - name: Rotate Token
+        env:
+          SERVERS_JSON: ${{ secrets.SERVERS_JSON }}
+          NEW_TOKEN: ${{ github.event.inputs.new_token || vars.SECRET_TOKEN }}
+        run: |
+          if [ -z "$NEW_TOKEN" ]; then
+            echo "::error::NEW_TOKEN is empty. Please set SECRET_TOKEN variable or provide new_token input."
+            exit 1
+          fi
+          python scripts/rotate_token.py --new-token "$NEW_TOKEN"
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "✓ Token rotation completed successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Update the SECRET_TOKEN variable in repository settings" >> $GITHUB_STEP_SUMMARY
+          echo "2. Verify all nodes are online and reconnected to the cluster" >> $GITHUB_STEP_SUMMARY

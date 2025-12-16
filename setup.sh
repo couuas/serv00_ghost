@@ -6,10 +6,10 @@ echo "===================="
 echo "Installing dependencies..."
 pip install -r requirements.txt
 
-if [ -f "setup_serv00_proxy.py" ]; then
+if [ -f "scripts/setup_proxy.py" ]; then
     read -p "Run automated Serv00 Proxy Setup (Cloudflare/Ports)? (y/n) [n]: " RUN_PROXY
     if [ "$RUN_PROXY" = "y" ]; then
-        python3 setup_serv00_proxy.py
+        python3 scripts/setup_proxy.py
     fi
 fi
 

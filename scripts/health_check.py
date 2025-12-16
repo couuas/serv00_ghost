@@ -24,30 +24,72 @@ def send_telegram_message(token, chat_id, message):
     except Exception as e:
         print(f"::error::Failed to send Telegram message: {e}")
 
-def main():
-    # 1. Load Configurations
+def load_config():
+    """
+    Load SERVERS_JSON and TELEGRAM_JSON from environment or file.
+    Supports both GitHub Actions (env vars) and local execution (file paths).
+    """
+    # Load SERVERS_JSON
     servers_json = os.environ.get("SERVERS_JSON")
-    telegram_json = os.environ.get("TELEGRAM_JSON")
+    servers_file = os.environ.get("SERVERS_FILE", "servers.json")
     
-    if not servers_json:
-        print("::error::SERVERS_JSON secret is missing or empty.")
+    if servers_json:
+        try:
+            servers = json.loads(servers_json)
+        except json.JSONDecodeError as e:
+            print(f"::error::Failed to parse SERVERS_JSON: {e}")
+            sys.exit(1)
+    elif os.path.isfile(servers_file):
+        print(f"Loading servers from file: {servers_file}")
+        try:
+            with open(servers_file, 'r') as f:
+                servers = json.load(f)
+        except Exception as e:
+            print(f"::error::Failed to read {servers_file}: {e}")
+            sys.exit(1)
+    else:
+        print("::error::SERVERS_JSON or SERVERS_FILE not found.")
         sys.exit(1)
 
-    try:
-        servers = json.loads(servers_json)
-    except json.JSONDecodeError as e:
-        print(f"::error::Failed to parse SERVERS_JSON: {e}")
-        sys.exit(1)
-
+    # Load TELEGRAM_JSON
+    telegram_json = os.environ.get("TELEGRAM_JSON")
+    telegram_file = os.environ.get("TELEGRAM_FILE", "telegram.json")
     telegram_config = {}
+    
     if telegram_json:
         try:
             telegram_config = json.loads(telegram_json)
         except json.JSONDecodeError as e:
             print(f"::warning::Failed to parse TELEGRAM_JSON: {e}")
+    elif os.path.isfile(telegram_file):
+        print(f"Loading Telegram config from file: {telegram_file}")
+        try:
+            with open(telegram_file, 'r') as f:
+                telegram_config = json.load(f)
+        except Exception as e:
+            print(f"::warning::Failed to read {telegram_file}: {e}")
+    
+    return servers, telegram_config
 
-    # 2. Perform Checks
+def main():
+    # 1. Load Configurations
+    servers, telegram_config = load_config()
+    
+    # 2. Separate servers by role (optional, for future use)
+    master_servers = [s for s in servers if s.get('role') == 'master']
+    slave_servers = [s for s in servers if s.get('role') == 'slave']
+    other_servers = [s for s in servers if s.get('role') not in ['master', 'slave']]
+    
     print(f"Starting Health Check for {len(servers)} servers...")
+    if master_servers:
+        print(f"  - Masters: {len(master_servers)}")
+    if slave_servers:
+        print(f"  - Slaves: {len(slave_servers)}")
+    if other_servers:
+        print(f"  - Other/Unspecified: {len(other_servers)}")
+    print()
+
+    # 3. Perform Checks
     results = []
     success_count = 0
 
