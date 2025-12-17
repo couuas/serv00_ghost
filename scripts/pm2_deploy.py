@@ -42,13 +42,8 @@ def main():
             # 3. Read .pm2_app_name and restart if exists
             cmd = (
                 f"cd {path} && git pull && "
-                "if [ -f .pm2_app_name ]; then "
-                "  APP_NAME=$(cat .pm2_app_name); "
-                "  echo 'Restarting PM2 app: '$APP_NAME; "
-                "  npx -y pm2 restart $APP_NAME; "
-                "else "
-                "  echo 'No .pm2_app_name found, skipping restart'; "
-                "fi"
+                "echo 'Restarting ALL PM2 services...' && "
+                "npx -y pm2 restart all"
             )
             print(f"Executing deployment and restart sequence...")
             

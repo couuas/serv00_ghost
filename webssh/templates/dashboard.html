@@ -739,6 +739,7 @@
                     const sshUrl = n.url || '#';
 
                     return `
+                                ${IS_AUTHED ? `
                                 <div style="display: flex; gap: 5px; width: 100%;">
                                     <a href="${sshUrl}" target="_blank" title="Open WebSSH" style="flex: 1; text-align: center;">
                                         >_ TERM
@@ -747,6 +748,12 @@
                                 <a href="/apps/${n.node_id}" target="_blank" style="text-align: center; background: rgba(0, 243, 255, 0.1); color: var(--primary-cyan); border: 1px solid var(--primary-cyan); padding: 8px; font-weight: bold; letter-spacing: 1px;">
                                     [ MANAGE APPS ]
                                 </a>
+                                ` : `
+                                <div style="text-align: center; padding: 10px; border: 1px dashed var(--text-dim); color: var(--text-dim); font-size: 0.8rem; height: 100%; display: flex; align-items: center; justify-content: center; cursor: pointer;" onclick="document.getElementById('login-modal').style.display='flex'">
+                                    CORE ACCESS LOCKED<br>
+                                    [ CLICK TO AUTH ]
+                                </div>
+                                `}
                             `;
                 }).join('')}
                     </div>

@@ -474,7 +474,7 @@ class SlavePM2APIHandler(MasterHandler):
                 proc = await asyncio.create_subprocess_shell(
                     cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
                 )
-                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=10.0)
+                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=180.0)
                 if proc.returncode == 0:
                     raw_data = json.loads(stdout.decode())
                     apps = []
@@ -498,7 +498,7 @@ class SlavePM2APIHandler(MasterHandler):
                 proc = await asyncio.create_subprocess_shell(
                     cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
                 )
-                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=10.0)
+                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=180.0)
                 if proc.returncode == 0:
                     self.write({'success': True, 'logs': stdout.decode()})
                 else:
@@ -509,7 +509,7 @@ class SlavePM2APIHandler(MasterHandler):
                 proc = await asyncio.create_subprocess_shell(
                     cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
                 )
-                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30.0)
+                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=180.0)
                 if proc.returncode == 0:
                      self.write({'success': True, 'message': f'{action} successful'})
                 else:
@@ -584,7 +584,7 @@ class MasterAppsProxyHandler(BaseAuthHandler):
                 method='POST', 
                 body=json.dumps(body), 
                 headers=headers,
-                request_timeout=35.0,
+                request_timeout=180.0,
                 raise_error=False # Don't raise exception on 4xx/5xx, handle manually
             )
             
