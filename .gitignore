@@ -63,3 +63,17 @@ target/
 
 # known_hosts file
 known_hosts
+
+# Sensitive Configs (Prevent accidental commit)
+.env
+servers.json
+config.json
+*.log
+logs/
+
+# IDE Settings
+.vscode/
+.idea/
+*.swp
+*.swo
+

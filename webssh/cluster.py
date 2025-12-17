@@ -20,6 +20,8 @@ try:
 except ImportError:
     psutil = None
 
+from webssh.handler import IndexHandler
+
 class NodeManager:
     """Manages the list of registered slave nodes."""
     def __init__(self):
@@ -685,3 +687,24 @@ class LogViewHandler(BaseAuthHandler):
         pm_id = self.get_argument('pm_id')
         logs = node_manager.get_logs(node_id, pm_id)
         self.write({"logs": logs if logs else "WAITING_FOR_DATA..."})
+
+class SlaveIndexHandler(IndexHandler):
+    """
+    Wraps IndexHandler to protect the root / access on Slaves.
+    If 'secret' query param doesn't match, show alert.html.
+    """
+    def get(self):
+        # 1. Check Secret
+        secret = self.get_argument('secret', '')
+        # Also check header just in case, though usually browser visit
+        if not secret:
+             secret = self.request.headers.get('X-Cluster-Secret', '')
+
+        if options.secret and secret != options.secret:
+            # UNAUTHORIZED -> Show Alert
+            self.set_status(403)
+            self.render('alert.html')
+            return
+
+        # 2. If authorized, proceed with normal WebSSH Page
+        super(SlaveIndexHandler, self).get()

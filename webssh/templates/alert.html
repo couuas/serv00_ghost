@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>⚠️ SECURITY ALERT // ACCESS DENIED</title>
+    <style>
+        body {
+            background-color: #000;
+            color: #ff0000;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            text-align: center;
+            background-image:
+                linear-gradient(rgba(255, 0, 0, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 0, 0, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .container {
+            border: 2px solid #ff0000;
+            padding: 40px;
+            max-width: 600px;
+            position: relative;
+            background: rgba(10, 0, 0, 0.9);
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+            animation: glitch 1s infinite alternate-reverse;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin: 0 0 20px 0;
+            text-shadow: 2px 2px 0px #330000;
+            letter-spacing: 5px;
+        }
+
+        p {
+            font-size: 1.2rem;
+            line-height: 1.6;
+        }
+
+        .blink {
+            animation: blinker 1s linear infinite;
+        }
+
+        .ip-log {
+            margin-top: 30px;
+            font-size: 0.9rem;
+            border-top: 1px dashed #ff0000;
+            padding-top: 10px;
+            color: #aa0000;
+        }
+
+        @keyframes blinker {
+            50% {
+                opacity: 0;
+            }
+        }
+
+        @keyframes glitch {
+            0% {
+                transform: translate(0)
+            }
+
+            20% {
+                transform: translate(-2px, 2px)
+            }
+
+            40% {
+                transform: translate(-2px, -2px)
+            }
+
+            60% {
+                transform: translate(2px, 2px)
+            }
+
+            80% {
+                transform: translate(2px, -2px)
+            }
+
+            100% {
+                transform: translate(0)
+            }
+        }
+
+        /* Scanline effect */
+        body::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(to bottom,
+                    rgba(255, 0, 0, 0),
+                    rgba(255, 0, 0, 0) 50%,
+                    rgba(0, 0, 0, 0.2) 50%,
+                    rgba(0, 0, 0, 0.2));
+            background-size: 100% 4px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>⚠️ ACCESS DENIED</h1>
+        <p>UNAUTHORIZED ACCESS DETECTED</p>
+        <p>This node is a restricted component of the Cluster.</p>
+        <p class="blink">[ INTRUSION LOGGED ]</p>
+
+        <div class="ip-log">
+            Client IP: <span id="ip">TRACKING...</span><br>
+            Timestamp: <span id="time">RECORDING...</span><br>
+            Action: <strong>TERMINATE CONNECTION</strong>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('time').innerText = new Date().toISOString();
+        // Fetch IP echo or just show random placeholder effect
+        // Real IP logging happens on server side
+    </script>
+</body>
+
+</html>

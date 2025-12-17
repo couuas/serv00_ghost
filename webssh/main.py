@@ -11,7 +11,7 @@ from webssh.settings import (
 )
 
 
-from webssh.cluster import MasterHandler, SlaveWorker, DashboardHandler, NodeListHandler, LoginHandler, NodeControlHandler, LogCallbackHandler, LogViewHandler, AppListCallbackHandler, SlavePM2APIHandler, MasterAppsProxyHandler, AppsPageHandler
+from webssh.cluster import MasterHandler, SlaveWorker, DashboardHandler, NodeListHandler, LoginHandler, NodeControlHandler, LogCallbackHandler, LogViewHandler, AppListCallbackHandler, SlavePM2APIHandler, MasterAppsProxyHandler, AppsPageHandler, SlaveIndexHandler
 
 
 def make_handlers(loop, options):
@@ -19,8 +19,16 @@ def make_handlers(loop, options):
     policy = get_policy_setting(options, host_keys_settings)
 
     # Default handlers (Standalone/Slave)
+    # If Slave Mode, separate logic handled below? 
+    # Actually, we can just switch the handler class based on options.mode here?
+    # No, options is passed in.
+    
+    index_handler = IndexHandler
+    if options.mode == 'slave':
+        index_handler = SlaveIndexHandler
+
     handlers = [
-        (r'/', IndexHandler, dict(loop=loop, policy=policy,
+        (r'/', index_handler, dict(loop=loop, policy=policy,
                                   host_keys_settings=host_keys_settings)),
         (r'/api/slave/pm2', SlavePM2APIHandler),  # Available on ALL nodes
         (r'/ws', WsockHandler, dict(loop=loop))
