@@ -370,15 +370,72 @@ class BaseAuthHandler(tornado.web.RequestHandler):
         self.finish()
         return False
 
+
+class RateLimiter:
+    _failures = {} # {ip: {'count': int, 'reset': timestamp}}
+    _lockouts = {} # {ip: unlock_timestamp}
+
+    @classmethod
+    def check(cls, ip):
+        import time
+        now = time.time()
+        
+        # Check lockout
+        if ip in cls._lockouts:
+            unlock_time = cls._lockouts[ip]
+            if now < unlock_time:
+                return False, int(unlock_time - now)
+            else:
+                del cls._lockouts[ip]
+                # Reset failures after lockout expires
+                if ip in cls._failures: del cls._failures[ip]
+
+        return True, 0
+
+    @classmethod
+    def record_failure(cls, ip):
+        import time
+        now = time.time()
+        
+        # Init or Reset window if passed (5 minutes window)
+        if ip not in cls._failures or (now - cls._failures[ip]['reset'] > 300):
+            cls._failures[ip] = {'count': 1, 'reset': now}
+        else:
+             cls._failures[ip]['count'] += 1
+
+        # Check threshold (5 attempts)
+        if cls._failures[ip]['count'] >= 5:
+            cls._lockouts[ip] = now + 900 # 15 minutes lockout
+            logging.warning(f"IP {ip} banned for brute force attempts")
+            return True # Is now locked out
+            
+        return False # Still allowed
+
 class LoginHandler(tornado.web.RequestHandler):
     def post(self):
         try:
+            ip = self.request.remote_ip
+            allowed, wait_time = RateLimiter.check(ip)
+            if not allowed:
+                 self.set_status(429)
+                 self.write({"error": f"Too many attempts. Try again in {wait_time}s."})
+                 return
+
             data = json.loads(self.request.body)
             password = data.get('password')
+            
             if password == options.auth_password:
+                # Clear failures on success
+                if ip in RateLimiter._failures: del RateLimiter._failures[ip]
+                
                 self.set_cookie('auth_token', password, expires_days=7)
                 self.write({"status": "ok"})
             else:
+                RateLimiter.record_failure(ip)
+                # Add slight delay to slow down brute force
+                import time
+                time.sleep(1) 
+                
                 self.set_status(403)
                 self.write({"error": "Invalid password"})
         except Exception as e:

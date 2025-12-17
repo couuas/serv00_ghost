@@ -377,10 +377,16 @@
             <p style="color: var(--text-main); margin: 20px 0;">SYSTEM LOCKED. ENTER SECURITY KEY TO UNLOCK CONTROL.</p>
             <div style="width: 100%; max-width: 400px; margin: 0 auto;">
                 <input type="password" id="passwordInput" placeholder="ENTER SECURITY KEY"
-                    style="width: 100%; margin-bottom: 15px; box-sizing: border-box; text-align: center;"
-                    onkeypress="handleEnter(event)">
-                <button class="login-btn" onclick="performLogin()"
-                    style="border-color: var(--alert-red)!important; color: var(--alert-red)!important; width: 100%;">AUTHENTICATE</button>
+                    style="width: 100%; margin-bottom: 15px; box-sizing: border-box; text-align: center;">
+                <div style="margin-top:20px; text-align:right;">
+                    <button class="btn btn-primary" onclick="performLogin()">UNLOCK >> </button>
+                </div>
+                <!-- Security Policy Hint -->
+                <div
+                    style="margin-top:10px; font-size:0.7rem; color:var(--text-dim); text-align:center; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
+                    SECURITY: Max 5 attempts / 5 min.<br>
+                    Exceeding limit triggers 15 min IP lockout.
+                </div>
             </div>
             <p id="loginError" style="color: var(--alert-red); display: none; margin-top: 10px; font-size: 0.8em;"></p>
         </div>
@@ -494,10 +500,21 @@
                         const data = await res.json();
                         if (data.error) errorMsg = data.error;
                     } catch (e) {
-                        errorMsg = "Login Failed (" + res.status + " " + res.statusText + ")";
+                        errorMsg = "Login Failed status=" + res.status;
                     }
-                    err.textContent = "Error: " + errorMsg;
+
+                    err.innerHTML = res.status === 429 ?
+                        `<strong>🛑 ACCESS LOCKED</strong><br>${errorMsg}` :
+                        `⚠️ ${errorMsg}`;
+                    err.style.color = res.status === 429 ? '#ff0000' : 'var(--alert-red)';
                     err.style.display = 'block';
+
+                    // Shake effect
+                    const modalContent = document.querySelector('#login-modal .modal-content');
+                    if (modalContent) {
+                        modalContent.style.animation = 'none';
+                        setTimeout(() => modalContent.style.animation = 'shake 0.5s', 10);
+                    }
                 }
             } catch (e) {
                 err.textContent = "System Error: " + e;
