@@ -693,18 +693,19 @@ class SlaveIndexHandler(IndexHandler):
     Wraps IndexHandler to protect the root / access on Slaves.
     If 'secret' query param doesn't match, show alert.html.
     """
-    def get(self):
-        # 1. Check Secret
-        secret = self.get_argument('secret', '')
-        # Also check header just in case, though usually browser visit
-        if not secret:
-             secret = self.request.headers.get('X-Cluster-Secret', '')
+    def check_cluster_auth(self):
+        # Override MixinHandler.check_cluster_auth to render HTML instead of plain text
+        if options.mode == 'slave' and options.secret:
+            secret = self.get_argument('secret', None)
+            if not secret:
+                 secret = self.request.headers.get('X-Cluster-Secret')
+            
+            if secret != options.secret:
+                logging.warning(f"Unauthorized access attempt to slave from {self.request.remote_ip}")
+                self.set_status(403)
+                self.render('alert.html')
+                raise tornado.web.Finish()
+    
+    # We don't need to override get() because if check_cluster_auth passes,
+    # the parent IndexHandler.get() will run normally.
 
-        if options.secret and secret != options.secret:
-            # UNAUTHORIZED -> Show Alert
-            self.set_status(403)
-            self.render('alert.html')
-            return
-
-        # 2. If authorized, proceed with normal WebSSH Page
-        super(SlaveIndexHandler, self).get()
