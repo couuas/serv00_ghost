@@ -279,16 +279,45 @@
             margin-bottom: 30px;
             gap: 15px;
             border-bottom: 1px solid rgba(0, 243, 255, 0.1);
-            padding-bottom: 10px;
+            padding-bottom: 30px;
         }
 
         .toolbar-btn {
-            color: var(--text-main);
+            background: rgba(0, 243, 255, 0.05) !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: var(--primary-cyan) !important;
+            border-radius: 4px !important;
+            padding: 5px 15px;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            margin: 0;
+        }
+
+        .toolbar-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 243, 255, 0.2), transparent);
+            transition: 0.5s;
         }
 
         .toolbar-btn:hover {
-            color: var(--primary-cyan);
+            background: rgba(0, 243, 255, 0.15) !important;
+            border: none !important;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.3) !important;
             text-shadow: 0 0 5px var(--primary-cyan);
+            color: #fff !important;
+        }
+
+        .toolbar-btn:hover::before {
+            left: 100%;
         }
 
         /* Grid Layout Override */
@@ -396,9 +425,9 @@
             <div id="tab-cluster" class="tab-content active" style="margin-top: 20px;">
                 <div class="toolbar" style="display: flex; justify-content: flex-end; align-items: center;">
                     <div id="toolbar-actions"
-                        style="overflow: hidden; width: 0; display: flex; transition: width 0.3s ease; white-space: nowrap;">
-                        <button class="toolbar-btn" onclick="toggleView()" title="View Mode"
-                            style="margin-right:5px;"><span id="view-icon">≣</span> VIEW</button>
+                        style="overflow: hidden; width: 0; display: flex; gap: 10px; transition: width 0.3s ease; white-space: nowrap;">
+                        <button class="toolbar-btn" onclick="toggleView()" title="View Mode"><span
+                                id="view-icon">≣</span> VIEW</button>
                         <button class="toolbar-btn" onclick="toggleSort()" title="Sort Order"><span
                                 id="sort-icon">⬇️</span> SORT</button>
                     </div>
@@ -439,11 +468,11 @@
                 const toggle = document.getElementById('toolbar-toggle');
                 // Check if open (using explicit width style or computed)
                 if (actions.style.width === '0px' || actions.style.width === '') {
-                    actions.style.width = '220px'; // Approx width for 2 buttons
-                    toggle.innerText = '》》》';
+                    actions.style.width = '190px'; // Increased for gap
+                    toggle.innerText = '》》》》》';
                 } else {
                     actions.style.width = '0px';
-                    toggle.innerText = '《《《';
+                    toggle.innerText = '《《《《《';
                 }
             }
 
