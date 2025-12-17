@@ -393,274 +393,293 @@
 
 
         <div id="tab-cluster" class="tab-content active" style="margin-top: 20px;">
-            <div class="toolbar" style="display: flex; justify-content: space-between;">
-                <button class="toolbar-btn" onclick="toggleView()" title="View Mode"><span id="view-icon">≣</span>
-                    VIEW</button>
-                <button class="toolbar-btn" onclick="toggleSort()" title="Sort Order"><span id="sort-icon">⬇️</span>
-                    SORT</button>
-            </div>
-            <div id="node-list">
-                <p style="color: var(--primary-cyan); animation: blink 1s infinite;">INITIALIZING CONNECTION...</p>
+            <div id="tab-cluster" class="tab-content active" style="margin-top: 20px;">
+                <div class="toolbar" style="display: flex; justify-content: flex-end; align-items: center;">
+                    <div id="toolbar-actions"
+                        style="overflow: hidden; width: 0; display: flex; transition: width 0.3s ease; white-space: nowrap;">
+                        <button class="toolbar-btn" onclick="toggleView()" title="View Mode"
+                            style="margin-right:5px;"><span id="view-icon">≣</span> VIEW</button>
+                        <button class="toolbar-btn" onclick="toggleSort()" title="Sort Order"><span
+                                id="sort-icon">⬇️</span> SORT</button>
+                    </div>
+                    <button id="toolbar-toggle" class="toolbar-btn" onclick="toggleToolbar()"
+                        style="margin-left: 10px; min-width: 60px;">《《《</button>
+                </div>
+                <div id="node-list">
+                    <p style="color: var(--primary-cyan); animation: blink 1s infinite;">INITIALIZING CONNECTION...</p>
+                </div>
             </div>
         </div>
-    </div>
 
 
 
-    <script>
-        const CLUSTER_SECRET = "{{ secret }}";
-        const IS_AUTHED = "{{ is_authed }}" == "True";
+        <script>
+            const CLUSTER_SECRET = "{{ secret }}";
+            const IS_AUTHED = "{{ is_authed }}" == "True";
 
-        // Ensure XSRF cookie is set and available for JS
-        const REQUEST_XSRF_TOKEN = "{{ handler.xsrf_token }}";
+            // Ensure XSRF cookie is set and available for JS
+            const REQUEST_XSRF_TOKEN = "{{ handler.xsrf_token }}";
 
-        let currentSort = 'asc'; // 'asc' or 'desc'
-        let currentView = 'list'; // 'list' or 'grid'
-        let lastNodes = []; // store for re-rendering
+            let currentSort = 'asc'; // 'asc' or 'desc'
+            let currentView = 'list'; // 'list' or 'grid'
+            let lastNodes = []; // store for re-rendering
 
-        function connect(url) {
-            let targetUrl = url;
-            if (CLUSTER_SECRET) {
-                targetUrl += (targetUrl.includes('?') ? '&' : '?') + 'secret=' + encodeURIComponent(CLUSTER_SECRET);
+            function connect(url) {
+                let targetUrl = url;
+                if (CLUSTER_SECRET) {
+                    targetUrl += (targetUrl.includes('?') ? '&' : '?') + 'secret=' + encodeURIComponent(CLUSTER_SECRET);
+                }
+                window.open(targetUrl, '_blank');
             }
-            window.open(targetUrl, '_blank');
-        }
 
 
-        // --- Tab Logic ---
-        async function switchTab(tab, event) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-
-            document.getElementById('tab-' + tab).classList.add('active');
-            if (event) {
-                event.currentTarget.classList.add('active');
-            } else {
-                const index = ['cluster'].indexOf(tab);
-                if (index >= 0) document.querySelectorAll('.tab-btn')[index].classList.add('active');
+            // --- Tab Logic ---
+            function toggleToolbar() {
+                const actions = document.getElementById('toolbar-actions');
+                const toggle = document.getElementById('toolbar-toggle');
+                // Check if open (using explicit width style or computed)
+                if (actions.style.width === '0px' || actions.style.width === '') {
+                    actions.style.width = '220px'; // Approx width for 2 buttons
+                    toggle.innerText = '》》》';
+                } else {
+                    actions.style.width = '0px';
+                    toggle.innerText = '《《《';
+                }
             }
-        }
 
-        // --- Auth & Main Logic ---
-        function initAuthUI() {
-            const container = document.getElementById('auth-controls');
-            // Style overridden by CSS via class logic below, simplified HTML here
-            if (IS_AUTHED) {
-                container.innerHTML = `
+            async function switchTab(tab, event) {
+                document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+                document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+                document.getElementById('tab-' + tab).classList.add('active');
+                if (event) {
+                    event.currentTarget.classList.add('active');
+                } else {
+                    const index = ['cluster'].indexOf(tab);
+                    if (index >= 0) document.querySelectorAll('.tab-btn')[index].classList.add('active');
+                }
+            }
+
+            // --- Auth & Main Logic ---
+            function initAuthUI() {
+                const container = document.getElementById('auth-controls');
+                // Style overridden by CSS via class logic below, simplified HTML here
+                if (IS_AUTHED) {
+                    container.innerHTML = `
                     <span style="color: var(--neon-green)" onclick="connect('/webssh')">[ ACCESS GRANTED ]</span>
                 `;
-                document.getElementById('guestOverlay').style.display = 'none';
-            } else {
-                container.innerHTML = `<span style="color: var(--alert-red)">[ ACCESS LOCKED ]</span>`;
-                if (document.cookie.indexOf('XSRF') === -1) {
-                    // Initial load might not have cookie set yet?
-                }
-                // Only show overlay if we want to force login, user said "remove login button" implies 
-                // maybe they want it always visible or moved. 
-                // Request: "remove LOGIN_SYSTEM button, move ACCESS REQUIRED to top".
-                // Let's hide the overlay by default and only show login modal when triggered? 
-                // Actually user said "move ACCESS REQUIRED to top". 
-                // Maybe they mean the login modal itself?
-                // Or just the "dashboard title"? 
-                // Interpreting "ACCESS REQUIRED moved to top" as a status indicator.
-                // The Guest Overlay is a good way to "force" the attention or maybe just a header bar.
-            }
-        }
-
-        function openLogin() {
-            document.getElementById('loginModal').style.display = 'block';
-            document.getElementById('passwordInput').focus();
-        }
-        function closeLogin() { document.getElementById('loginModal').style.display = 'none'; }
-
-        function handleEnter(e) {
-            if (e.key === 'Enter') performLogin();
-        }
-
-        async function performLogin() {
-            const pwd = document.getElementById('passwordInput').value;
-            const err = document.getElementById('loginError');
-            err.style.display = 'none';
-
-            try {
-                // Get XSRF token
-                const headers = { 'Content-Type': 'application/json' };
-                if (REQUEST_XSRF_TOKEN) headers['X-XSRFToken'] = REQUEST_XSRF_TOKEN;
-
-                const res = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: headers,
-                    body: JSON.stringify({ password: pwd })
-                });
-                if (res.ok) {
-                    window.location.reload();
+                    document.getElementById('guestOverlay').style.display = 'none';
                 } else {
-                    let errorMsg = "Invalid Password";
-                    try {
-                        const data = await res.json();
-                        if (data.error) errorMsg = data.error;
-                    } catch (e) {
-                        errorMsg = "Login Failed status=" + res.status;
+                    container.innerHTML = `<span style="color: var(--alert-red)">[ ACCESS LOCKED ]</span>`;
+                    if (document.cookie.indexOf('XSRF') === -1) {
+                        // Initial load might not have cookie set yet?
                     }
-
-                    err.innerHTML = res.status === 429 ?
-                        `<strong>🛑 ACCESS LOCKED</strong><br>${errorMsg}` :
-                        `⚠️ ${errorMsg}`;
-                    err.style.color = res.status === 429 ? '#ff0000' : 'var(--alert-red)';
-                    err.style.display = 'block';
-
-                    // Shake effect
-                    const modalContent = document.querySelector('#login-modal .modal-content');
-                    if (modalContent) {
-                        modalContent.style.animation = 'none';
-                        setTimeout(() => modalContent.style.animation = 'shake 0.5s', 10);
-                    }
+                    // Only show overlay if we want to force login, user said "remove login button" implies 
+                    // maybe they want it always visible or moved. 
+                    // Request: "remove LOGIN_SYSTEM button, move ACCESS REQUIRED to top".
+                    // Let's hide the overlay by default and only show login modal when triggered? 
+                    // Actually user said "move ACCESS REQUIRED to top". 
+                    // Maybe they mean the login modal itself?
+                    // Or just the "dashboard title"? 
+                    // Interpreting "ACCESS REQUIRED moved to top" as a status indicator.
+                    // The Guest Overlay is a good way to "force" the attention or maybe just a header bar.
                 }
-            } catch (e) {
-                err.textContent = "System Error: " + e;
-                err.style.display = 'block';
             }
-        }
 
-        function getCookie(name) {
-            var r = document.cookie.match("\\b" + name + "=([^;]*)\\b");
-            return r ? r[1] : undefined;
-        }
-
-        function toggleSort() {
-            currentSort = currentSort === 'asc' ? 'desc' : 'asc';
-            document.getElementById('sort-icon').textContent = currentSort === 'asc' ? '⬇️' : '⬆️';
-            fetchNodes();
-        }
-
-        function toggleView() {
-            currentView = currentView === 'list' ? 'grid' : 'list';
-            document.getElementById('view-icon').textContent = currentView === 'list' ? '≣' : '⊞';
-            const container = document.getElementById('node-list');
-            if (currentView === 'grid') container.classList.add('grid');
-            else container.classList.remove('grid');
-        }
-
-        async function fetchNodes() {
-            try {
-                const response = await fetch('/api/nodes');
-                if (!response.ok) {
-                    if (response.status === 401 && IS_AUTHED) window.location.reload();
-                    throw new Error('Failed to fetch');
-                }
-                const nodes = await response.json();
-                lastNodes = nodes; // Save for re-renders
-                renderNodes(nodes);
-            } catch (e) {
-                console.error(e);
+            function openLogin() {
+                document.getElementById('loginModal').style.display = 'block';
+                document.getElementById('passwordInput').focus();
             }
-        }
+            function closeLogin() { document.getElementById('loginModal').style.display = 'none'; }
 
-        async function refreshApps(nodeId) {
-            try {
-                const res = await fetch('/api/control', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-XSRFToken': REQUEST_XSRF_TOKEN },
-                    body: JSON.stringify({ node_id: nodeId, action: 'list_apps' })
-                });
-                const data = await res.json();
-                if (data.status === 'ok') {
-                    // formatted toast or alert
-                    const btn = document.getElementById('btn-refresh-' + nodeId);
-                    if (btn) {
-                        const originalText = btn.innerText;
-                        btn.innerText = 'REQ...';
-                        setTimeout(() => btn.innerText = originalText, 2000);
-                    }
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            } catch (e) {
-                alert('Comm Error: ' + e);
+            function handleEnter(e) {
+                if (e.key === 'Enter') performLogin();
             }
-        }
 
-        async function viewLogs(nodeId, pmId) {
-            // 1. Send Request
-            const req = await fetch('/api/control', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-XSRFToken': REQUEST_XSRF_TOKEN },
-                body: JSON.stringify({ node_id: nodeId, action: 'logs', pm_id: pmId })
-            });
+            async function performLogin() {
+                const pwd = document.getElementById('passwordInput').value;
+                const err = document.getElementById('loginError');
+                err.style.display = 'none';
 
-            // 2. Show Modal
-            const modal = document.getElementById('logsModal');
-            const content = document.getElementById('logsContent');
-            modal.style.display = 'block';
-            content.innerText = 'Requesting logs from slave...';
-
-            // 3. Poll for result
-            let attempts = 0;
-            const poll = setInterval(async () => {
-                attempts++;
                 try {
-                    const res = await fetch(`/api/logs?node_id=${nodeId}&pm_id=${pmId}`);
+                    // Get XSRF token
+                    const headers = { 'Content-Type': 'application/json' };
+                    if (REQUEST_XSRF_TOKEN) headers['X-XSRFToken'] = REQUEST_XSRF_TOKEN;
+
+                    const res = await fetch('/api/login', {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify({ password: pwd })
+                    });
                     if (res.ok) {
-                        const data = await res.json();
-                        if (data.logs && data.logs !== "WAITING_FOR_DATA...") {
-                            content.innerText = data.logs;
-                            clearInterval(poll);
+                        window.location.reload();
+                    } else {
+                        let errorMsg = "Invalid Password";
+                        try {
+                            const data = await res.json();
+                            if (data.error) errorMsg = data.error;
+                        } catch (e) {
+                            errorMsg = "Login Failed status=" + res.status;
+                        }
+
+                        err.innerHTML = res.status === 429 ?
+                            `<strong>🛑 ACCESS LOCKED</strong><br>${errorMsg}` :
+                            `⚠️ ${errorMsg}`;
+                        err.style.color = res.status === 429 ? '#ff0000' : 'var(--alert-red)';
+                        err.style.display = 'block';
+
+                        // Shake effect
+                        const modalContent = document.querySelector('#login-modal .modal-content');
+                        if (modalContent) {
+                            modalContent.style.animation = 'none';
+                            setTimeout(() => modalContent.style.animation = 'shake 0.5s', 10);
                         }
                     }
-                } catch (e) { }
-
-                // Heartbeat is 10s, so we wait 30s to be safe
-                if (attempts > 30) {
-                    clearInterval(poll);
-                    if (content.innerText === 'Requesting logs from slave...') {
-                        content.innerText = 'Timeout waiting for logs. (Slave might be offline or busy)';
-                    }
+                } catch (e) {
+                    err.textContent = "System Error: " + e;
+                    err.style.display = 'block';
                 }
-            }, 1000);
-        }
-
-        function closeLogs() {
-            document.getElementById('logsModal').style.display = 'none';
-        }
-
-        async function controlApp(nodeId, action, pmId) {
-            if (!confirm(`CONFIRM: ${action.toUpperCase()} process ${pmId}?`)) return;
-
-            try {
-                const response = await fetch('/api/control', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-XSRFToken': REQUEST_XSRF_TOKEN
-                    },
-                    body: JSON.stringify({ node_id: nodeId, action: action, pm_id: pmId })
-                });
-                const data = await response.json();
-                if (data.status === 'ok') {
-                    alert(`COMMAND QUEUED: ${action.toUpperCase()}`);
-                } else {
-                    alert(`ERROR: ${data.error}`);
-                }
-            } catch (e) {
-                alert(`COMM ERROR: ${e}`);
             }
-        }
 
-        function renderNodes(nodes) {
-            const container = document.getElementById('node-list');
-            const masterStatusDiv = document.getElementById('master-status');
+            function getCookie(name) {
+                var r = document.cookie.match("\\b" + name + "=([^;]*)\\b");
+                return r ? r[1] : undefined;
+            }
 
-            // Apply View State
-            if (currentView === 'grid') container.classList.add('grid');
-            else container.classList.remove('grid');
+            function toggleSort() {
+                currentSort = currentSort === 'asc' ? 'desc' : 'asc';
+                document.getElementById('sort-icon').textContent = currentSort === 'asc' ? '⬇️' : '⬆️';
+                fetchNodes();
+            }
 
-            // Extract Master-Local logic
-            const masterNodeIndex = nodes.findIndex(n => n.name === 'Master-Local');
-            if (masterNodeIndex > -1) {
-                const master = nodes[masterNodeIndex];
-                nodes.splice(masterNodeIndex, 1);
-                const isOnline = master.is_online;
-                masterStatusDiv.innerHTML = `
+            function toggleView() {
+                currentView = currentView === 'list' ? 'grid' : 'list';
+                document.getElementById('view-icon').textContent = currentView === 'list' ? '≣' : '⊞';
+                const container = document.getElementById('node-list');
+                if (currentView === 'grid') container.classList.add('grid');
+                else container.classList.remove('grid');
+            }
+
+            async function fetchNodes() {
+                try {
+                    const response = await fetch('/api/nodes');
+                    if (!response.ok) {
+                        if (response.status === 401 && IS_AUTHED) window.location.reload();
+                        throw new Error('Failed to fetch');
+                    }
+                    const nodes = await response.json();
+                    lastNodes = nodes; // Save for re-renders
+                    renderNodes(nodes);
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            async function refreshApps(nodeId) {
+                try {
+                    const res = await fetch('/api/control', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-XSRFToken': REQUEST_XSRF_TOKEN },
+                        body: JSON.stringify({ node_id: nodeId, action: 'list_apps' })
+                    });
+                    const data = await res.json();
+                    if (data.status === 'ok') {
+                        // formatted toast or alert
+                        const btn = document.getElementById('btn-refresh-' + nodeId);
+                        if (btn) {
+                            const originalText = btn.innerText;
+                            btn.innerText = 'REQ...';
+                            setTimeout(() => btn.innerText = originalText, 2000);
+                        }
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                } catch (e) {
+                    alert('Comm Error: ' + e);
+                }
+            }
+
+            async function viewLogs(nodeId, pmId) {
+                // 1. Send Request
+                const req = await fetch('/api/control', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-XSRFToken': REQUEST_XSRF_TOKEN },
+                    body: JSON.stringify({ node_id: nodeId, action: 'logs', pm_id: pmId })
+                });
+
+                // 2. Show Modal
+                const modal = document.getElementById('logsModal');
+                const content = document.getElementById('logsContent');
+                modal.style.display = 'block';
+                content.innerText = 'Requesting logs from slave...';
+
+                // 3. Poll for result
+                let attempts = 0;
+                const poll = setInterval(async () => {
+                    attempts++;
+                    try {
+                        const res = await fetch(`/api/logs?node_id=${nodeId}&pm_id=${pmId}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.logs && data.logs !== "WAITING_FOR_DATA...") {
+                                content.innerText = data.logs;
+                                clearInterval(poll);
+                            }
+                        }
+                    } catch (e) { }
+
+                    // Heartbeat is 10s, so we wait 30s to be safe
+                    if (attempts > 30) {
+                        clearInterval(poll);
+                        if (content.innerText === 'Requesting logs from slave...') {
+                            content.innerText = 'Timeout waiting for logs. (Slave might be offline or busy)';
+                        }
+                    }
+                }, 1000);
+            }
+
+            function closeLogs() {
+                document.getElementById('logsModal').style.display = 'none';
+            }
+
+            async function controlApp(nodeId, action, pmId) {
+                if (!confirm(`CONFIRM: ${action.toUpperCase()} process ${pmId}?`)) return;
+
+                try {
+                    const response = await fetch('/api/control', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-XSRFToken': REQUEST_XSRF_TOKEN
+                        },
+                        body: JSON.stringify({ node_id: nodeId, action: action, pm_id: pmId })
+                    });
+                    const data = await response.json();
+                    if (data.status === 'ok') {
+                        alert(`COMMAND QUEUED: ${action.toUpperCase()}`);
+                    } else {
+                        alert(`ERROR: ${data.error}`);
+                    }
+                } catch (e) {
+                    alert(`COMM ERROR: ${e}`);
+                }
+            }
+
+            function renderNodes(nodes) {
+                const container = document.getElementById('node-list');
+                const masterStatusDiv = document.getElementById('master-status');
+
+                // Apply View State
+                if (currentView === 'grid') container.classList.add('grid');
+                else container.classList.remove('grid');
+
+                // Extract Master-Local logic
+                const masterNodeIndex = nodes.findIndex(n => n.name === 'Master-Local');
+                if (masterNodeIndex > -1) {
+                    const master = nodes[masterNodeIndex];
+                    nodes.splice(masterNodeIndex, 1);
+                    const isOnline = master.is_online;
+                    masterStatusDiv.innerHTML = `
                         <span style="display: flex; align-items: center; margin-bottom: 5px;">
                             <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
                             MASTER_NODE [${isOnline ? 'ONLINE' : 'OFFLINE'}]
@@ -672,69 +691,69 @@
                              <span style="color: var(--primary-cyan); margin-left: 10px;">PROCS: <strong>${master.stats.processes || 0}</strong></span>
                         </div>
                 `;
-                masterStatusDiv.style.display = 'flex';
-            } else {
-                masterStatusDiv.style.display = 'none';
-            }
-
-            container.innerHTML = '';
-            if (nodes.length === 0) {
-                container.innerHTML = '<p style="color: var(--text-dim)">No slave units detected via network scan.</p>';
-                return;
-            }
-
-            const grouped = {};
-            nodes.forEach(node => {
-                if (!grouped[node.name]) grouped[node.name] = [];
-                grouped[node.name].push(node);
-            });
-
-            // Sort logic
-            function extractNumber(name) {
-                const match = name.match(/s(\d+)/i);
-                if (match) return parseInt(match[1]);
-                const anyNum = name.match(/(\d+)/);
-                return anyNum ? parseInt(anyNum[1]) : 0;
-            }
-
-            let keys = Object.keys(grouped);
-            keys.sort((a, b) => {
-                const numA = extractNumber(a);
-                const numB = extractNumber(b);
-
-                if (numA !== numB) {
-                    return currentSort === 'asc' ? numA - numB : numB - numA;
+                    masterStatusDiv.style.display = 'flex';
+                } else {
+                    masterStatusDiv.style.display = 'none';
                 }
-                if (currentSort === 'asc') return a.localeCompare(b);
-                else return b.localeCompare(a);
-            });
 
-            keys.forEach(name => {
-                const groupNodes = grouped[name];
-                const isAnyOnline = groupNodes.some(n => n.is_online);
-                const username = groupNodes[0].username || 'N/A';
+                container.innerHTML = '';
+                if (nodes.length === 0) {
+                    container.innerHTML = '<p style="color: var(--text-dim)">No slave units detected via network scan.</p>';
+                    return;
+                }
 
-                let avgCpu = 0, totalRam = 0, maxDisk = 0, totalProcs = 0, onlineCount = 0;
-                groupNodes.forEach(n => {
-                    // Trust stats if they exist, regardless of strict time-sync online check
-                    if (n.stats) {
-                        avgCpu += parseFloat(n.stats.cpu || 0);
-                        totalRam += parseFloat(n.stats.ram_usage || 0);
-                        maxDisk = Math.max(maxDisk, parseFloat(n.stats.disk_usage || 0));
-                        totalProcs += parseInt(n.stats.processes || 0);
-                        onlineCount++;
-                    }
+                const grouped = {};
+                nodes.forEach(node => {
+                    if (!grouped[node.name]) grouped[node.name] = [];
+                    grouped[node.name].push(node);
                 });
-                if (onlineCount > 0) avgCpu = avgCpu / onlineCount;
 
-                // App List Removed in favor of dedicated Apps Page
-                // Keeping variables for compatibility if needed elsewhere
-                let appListHtml = '';
+                // Sort logic
+                function extractNumber(name) {
+                    const match = name.match(/s(\d+)/i);
+                    if (match) return parseInt(match[1]);
+                    const anyNum = name.match(/(\d+)/);
+                    return anyNum ? parseInt(anyNum[1]) : 0;
+                }
 
-                const div = document.createElement('div');
-                div.className = 'node-card';
-                // Note: removed inline styles that clash with CSS, added cyberpunk structure
-                div.innerHTML = `
+                let keys = Object.keys(grouped);
+                keys.sort((a, b) => {
+                    const numA = extractNumber(a);
+                    const numB = extractNumber(b);
+
+                    if (numA !== numB) {
+                        return currentSort === 'asc' ? numA - numB : numB - numA;
+                    }
+                    if (currentSort === 'asc') return a.localeCompare(b);
+                    else return b.localeCompare(a);
+                });
+
+                keys.forEach(name => {
+                    const groupNodes = grouped[name];
+                    const isAnyOnline = groupNodes.some(n => n.is_online);
+                    const username = groupNodes[0].username || 'N/A';
+
+                    let avgCpu = 0, totalRam = 0, maxDisk = 0, totalProcs = 0, onlineCount = 0;
+                    groupNodes.forEach(n => {
+                        // Trust stats if they exist, regardless of strict time-sync online check
+                        if (n.stats) {
+                            avgCpu += parseFloat(n.stats.cpu || 0);
+                            totalRam += parseFloat(n.stats.ram_usage || 0);
+                            maxDisk = Math.max(maxDisk, parseFloat(n.stats.disk_usage || 0));
+                            totalProcs += parseInt(n.stats.processes || 0);
+                            onlineCount++;
+                        }
+                    });
+                    if (onlineCount > 0) avgCpu = avgCpu / onlineCount;
+
+                    // App List Removed in favor of dedicated Apps Page
+                    // Keeping variables for compatibility if needed elsewhere
+                    let appListHtml = '';
+
+                    const div = document.createElement('div');
+                    div.className = 'node-card';
+                    // Note: removed inline styles that clash with CSS, added cyberpunk structure
+                    div.innerHTML = `
                     <div class="node-info">
                         <h3>
                             <span class="status-dot ${isAnyOnline ? 'online' : 'offline'}"></span>
@@ -753,9 +772,9 @@
                     </div>
                     <div class="actions" style="display:flex; flex-direction:column; gap:8px;">
                         ${groupNodes.map(n => {
-                    const sshUrl = n.url || '#';
+                        const sshUrl = n.url || '#';
 
-                    return `
+                        return `
                                 ${IS_AUTHED ? `
                                 <div style="display: flex; gap: 5px; width: 100%;">
                                     <a href="${sshUrl}" target="_blank" title="Open WebSSH" style="flex: 1; text-align: center;">
@@ -772,17 +791,17 @@
                                 </div>
                                 `}
                             `;
-                }).join('')}
+                    }).join('')}
                     </div>
                 `;
-                container.appendChild(div);
-            });
-        }
+                    container.appendChild(div);
+                });
+            }
 
-        initAuthUI();
-        fetchNodes();
-        setInterval(fetchNodes, 5000);
-    </script>
+            initAuthUI();
+            fetchNodes();
+            setInterval(fetchNodes, 5000);
+        </script>
 </body>
 
 </html>
